@@ -2,6 +2,8 @@
 
 # 🟢 Naver Blog Style Skill
 
+<img width="2752" height="1536" alt="나만의_블로그_문체_스타일_스킬" src="https://github.com/user-attachments/assets/1e2d5b71-fdac-4ccd-b873-545a3ea04663" />
+
 ### 선택형 인터뷰로 나만의 문체를 만들고, 필요할 때 문맥에 맞는 대표·본문 이미지까지 구성하는 프로필 기반 네이버 블로그 스킬
 
 <p>
