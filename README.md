@@ -2,7 +2,7 @@
 
 # 🟢 Naver Blog Style Skill
 
-### 선택형 인터뷰로 나만의 네이버 블로그 문체를 만들고, 주제가 바뀌어도 같은 스타일로 글을 작성하는 프로필 기반 스킬
+### 선택형 인터뷰로 나만의 문체를 만들고, 필요할 때 문맥에 맞는 대표·본문 이미지까지 구성하는 프로필 기반 네이버 블로그 스킬
 
 <p>
   <a href="./SKILL.md">
@@ -13,6 +13,9 @@
   </a>
   <a href="./references/choice-question-bank.md">
     <img src="https://img.shields.io/badge/Interview-7_Phases-16A34A?style=for-the-badge" alt="7 Interview Phases" />
+  </a>
+  <a href="./references/visual-composition-workflow.md">
+    <img src="https://img.shields.io/badge/Visual_Composer-Ready-0F766E?style=for-the-badge" alt="Visual Composer Ready" />
   </a>
 </p>
 
@@ -28,9 +31,9 @@
 </p>
 
 **문체는 고정하고, 주제만 바꿉니다.**  
-말투·리듬·근거 사용법·문단 구조를 프로필로 분리해 반복 가능한 글쓰기 흐름을 제공합니다.
+말투·리듬·근거 사용법·문단 구조를 프로필로 분리하고, 명시적으로 요청한 경우에만 실사·창작·인포그래픽을 생성해 원고에 배치합니다.
 
-[빠른 시작](#-빠른-시작) · [핵심 기능](#-핵심-기능) · [작동 방식](#-작동-방식) · [파일 구조](#-파일-구조) · [사용 예시](#-사용-예시)
+[빠른 시작](#-빠른-시작) · [핵심 기능](#-핵심-기능) · [작동 방식](#-작동-방식) · [이미지 구성](#-visual-composer) · [파일 구조](#-파일-구조) · [사용 예시](#-사용-예시)
 
 </div>
 
@@ -71,6 +74,9 @@
 | 📝 **프로필 기반 작성** | 저장된 프로필을 불러와 새로운 주제의 초안과 수정본에 동일한 문체를 적용합니다. |
 | 📱 **모바일 가독성** | 짧은 문단, 독립 핵심 문장, 필요한 만큼의 목록과 소제목을 사용합니다. |
 | 🔎 **사실·의견 분리** | 공식 정보, 개인 관찰, 추천, 불확실한 내용을 구분합니다. |
+| 🎨 **문맥 기반 이미지 구성** | 이미지가 필요한 소제목만 선별하고 실사·창작·인포그래픽을 목적에 맞게 선택합니다. |
+| 🧾 **Manifest 기반 삽입** | 승인된 로컬 이미지만 명시적 슬롯에 비파괴적으로 삽입합니다. |
+| 👁️ **시각 QA** | 문맥, 사실성, 손·얼굴, 글자, 브랜드, 스타일, 모바일 크롭을 확인합니다. |
 | 🛡️ **네이버 품질 가드레일** | 키워드 반복, 복제 콘텐츠, 낚시성 제목, 과장 광고, 억지 CTA를 피합니다. |
 
 ## 🚀 빠른 시작
@@ -106,6 +112,15 @@ docs/naver-blog-style-profile.md에 저장된 프로필을 먼저 로드하고,
 한 번에 질문 하나씩 진행하고, 완료된 프로필은 기존 파일을 덮어쓰기 전에 변경안을 보여줘.
 ```
 
+### 5. 이미지가 포함된 글 만들기
+
+```text
+저장된 스타일 프로필로 주제 "[작성할 주제]"의 글을 작성해줘.
+사실 확인이 끝난 원고를 기준으로 대표 이미지와 필요한 본문 이미지를 만들어줘.
+실사·창작·인포그래픽은 소제목의 문맥과 분위기에 맞게 선택하고,
+검수에 통과한 이미지만 원고 중간에 넣어줘.
+```
+
 > [!TIP]
 > 이미 프로필이 있다면 인터뷰를 반복할 필요가 없습니다. 프로필 파일을 먼저 로드하고 주제, 글 유형, 독자 의도만 전달하면 됩니다.
 
@@ -123,7 +138,12 @@ flowchart TD
     G --> H["always·usually 규칙으로 초안 작성"]
     H --> I["사실·의견·불확실성 분리"]
     I --> J["모바일 가독성·제목·CTA 점검"]
-    J --> K["네이버 블로그 원고 완성"]
+    J --> K["사실 검증된 원고"]
+    K --> L{"이미지 요청이 있는가?"}
+    L -- "없음" --> M["텍스트 원고 완료"]
+    L -- "있음" --> N["시각 비트와 이미지 슬롯 선택"]
+    N --> O["실사·창작·인포그래픽 생성과 QA"]
+    O --> P["Manifest 기반 이미지 삽입 원고 완료"]
 ```
 
 ### 인터뷰 7단계
@@ -183,6 +203,59 @@ flowchart TD
 | ⚖️ **비교** | 비교 기준 → 차이 → 장단점 → 상황별 선택 기준 |
 | 🔗 **홍보·링크** | 유용한 정보 → 투명한 관계 고지 → 링크 → 과장 없는 안내 |
 
+## 🎨 Visual Composer
+
+Visual Composer는 사용자가 대표 이미지, 본문 이미지, 이미지 삽입을 명시적으로 요청했을 때만 실행됩니다. 일반 글쓰기 요청에서는 이미지 생성 도구를 호출하지 않습니다.
+
+### 실행 모드
+
+| 모드 | 요청 예시 | 출력 |
+|---|---|---|
+| `plan-only` | “이미지 위치와 프롬프트만 제안해줘” | 슬롯 계획, 프롬프트, alt, caption |
+| `generate-and-compose` | “대표 이미지와 본문 이미지를 만들어 넣어줘” | 이미지 파일, JSON manifest, 이미지 포함 Markdown |
+| `edit-existing` | “이 사진의 배경만 바꿔줘” | 기존 대상을 보존한 편집 이미지 |
+
+### 이미지 유형 선택
+
+| 글의 문맥 | 기본 유형 |
+|---|---|
+| 구체적인 사람·장소·제품·일상 상황 | `photorealistic-natural` |
+| 시간·절차·비교·체크리스트 | `infographic-diagram` |
+| 감정·관점·변화·추상적인 메시지 | `stylized-concept` |
+| 비운영 목적의 일반 인터페이스 개념 | `ui-mockup` |
+
+이미지 수는 고정하지 않습니다. 모든 소제목을 채우기보다 독자가 상황을 이해하기 어렵거나 정보 구조가 크게 바뀌는 지점만 선택합니다.
+
+### 출력 구조
+
+```text
+assets/<post-slug>/
+├── 01-cover.png
+├── 02-section-context.png
+├── 03-section-guide.png
+├── article.md
+├── image-manifest.json
+└── article-with-images.md
+```
+
+`image-manifest.json`에는 이미지 목적, 위치, 생성 모드, 프롬프트, 대체텍스트, 캡션, 경로, 승인 상태가 기록됩니다. 원고에는 `<!-- naver-image:<slot-id> -->` 마커를 사용합니다.
+
+승인된 이미지를 삽입하려면 프로젝트 루트에서 다음 명령을 실행합니다.
+
+```bash
+python3.11 scripts/insert_article_images.py \
+  --article assets/<post-slug>/article.md \
+  --manifest assets/<post-slug>/image-manifest.json \
+  --out assets/<post-slug>/article-with-images.md
+```
+
+기본 실행은 원본과 기존 출력 파일을 덮어쓰지 않습니다. 기존 출력 교체가 명시적으로 필요할 때만 `--force`를 사용합니다.
+
+> [!WARNING]
+> 앱 조작법, 금융 주문, 정책 신청처럼 화면 정확성이 중요한 경우 생성형 UI를 사용하지 않습니다. 사용자 캡처나 공식 자료를 우선하고, 생성 실사가 실제 경험의 증거로 오해될 수 있으면 캡션에서 이해를 돕기 위한 이미지임을 밝힙니다.
+
+상세 규칙: [시각 구성 흐름](./references/visual-composition-workflow.md) · [이미지 모드](./references/image-generation-modes.md) · [Manifest v1](./references/image-slot-manifest.md)
+
 ## 💬 사용 예시
 
 <details>
@@ -233,6 +306,18 @@ always, usually, optional, avoid 기준으로 차이를 표로 정리하고,
 
 </details>
 
+<details>
+<summary><strong>예시 5 — 대표·본문 이미지 생성과 삽입</strong></summary>
+
+```text
+완성된 글의 문맥을 분석해 대표 이미지와 필요한 소제목 이미지를 생성해줘.
+실사, 창작, 인포그래픽은 각 문단의 역할과 분위기에 따라 선택해줘.
+실제 브랜드 UI나 증거 사진처럼 보이는 이미지는 만들지 말고,
+QA를 통과한 이미지만 manifest를 이용해 원고에 삽입해줘.
+```
+
+</details>
+
 ## 📂 파일 구조
 
 ```text
@@ -243,7 +328,14 @@ always, usually, optional, avoid 기준으로 차이를 표로 정리하고,
 ├── 📁 docs
 │   └── 👤 naver-blog-style-profile.md
 ├── 📁 references
-│   └── ❓ choice-question-bank.md
+│   ├── ❓ choice-question-bank.md
+│   ├── 🎨 visual-composition-workflow.md
+│   ├── 🖼️ image-generation-modes.md
+│   └── 🧾 image-slot-manifest.md
+├── 📁 scripts
+│   └── 🔧 insert_article_images.py
+├── 📁 tests
+│   └── 🧪 test_insert_article_images.py
 └── 📁 assets                         # 로컬 생성 이미지, Git 추적 제외
 ```
 
@@ -252,6 +344,11 @@ always, usually, optional, avoid 기준으로 차이를 표로 정리하고,
 | [`SKILL.md`](./SKILL.md) | 인터뷰, 스타일 추출, 프로필 적용, 네이버 가드레일을 정의하는 핵심 스킬 |
 | [`docs/naver-blog-style-profile.md`](./docs/naver-blog-style-profile.md) | 확인된 개인 문체와 작성 규칙을 저장하는 재사용 프로필 |
 | [`references/choice-question-bank.md`](./references/choice-question-bank.md) | 7개 차원의 선택형 질문과 샘플 보정 문항 |
+| [`references/visual-composition-workflow.md`](./references/visual-composition-workflow.md) | 이미지 위치 선정, 생성, QA, 삽입 순서 |
+| [`references/image-generation-modes.md`](./references/image-generation-modes.md) | 실사·창작·인포그래픽·UI 개념 이미지의 선택 기준 |
+| [`references/image-slot-manifest.md`](./references/image-slot-manifest.md) | JSON v1 슬롯 계약, 마커 문법, 검증 실패 조건 |
+| [`scripts/insert_article_images.py`](./scripts/insert_article_images.py) | 승인된 이미지를 Markdown 슬롯에 삽입하는 비파괴 CLI |
+| [`tests/test_insert_article_images.py`](./tests/test_insert_article_images.py) | 경로·슬롯·특수문자·비덮어쓰기 단위 테스트 |
 | [`.gitignore`](./.gitignore) | `.DS_Store`와 로컬 이미지 `assets/`를 버전 관리에서 제외 |
 | `assets/` | 생성한 대표 이미지와 본문 이미지를 로컬에서 보관하는 폴더 |
 
@@ -361,7 +458,7 @@ git push origin feature/your-change
 - [ ] 샘플 원고 기반 문장 리듬 비교 리포트
 - [ ] 발행 전 자동 체크리스트 템플릿
 - [ ] 제목 후보와 본문 일치도 점검 방식
-- [ ] 이미지 삽입 위치와 캡션 가이드
+- [x] 이미지 삽입 위치와 캡션 가이드
 
 > 확장 아이디어는 현재 구현을 보장하는 로드맵이 아니라 향후 검토 가능한 제안 목록입니다.
 
@@ -381,6 +478,6 @@ git push origin feature/your-change
 
 ### 좋은 스타일은 화려한 말투보다 반복 가능한 선택에서 만들어집니다.
 
-**Naver Blog Style Skill** · Profile-driven · Evidence-aware · Mobile-readable
+**Naver Blog Style Skill** · Profile-driven · Evidence-aware · Visual-aware · Mobile-readable
 
 </div>

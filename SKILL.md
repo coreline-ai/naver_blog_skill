@@ -1,6 +1,6 @@
 ---
 name: naver-blog-style
-description: "Extract a reusable, topic-independent Naver Blog writing style through a choice-based interview, then apply the resulting style profile to drafts and revisions. Use when a user wants a personal blog tone, writing-style guide, or reusable Naver Blog style skill."
+description: "Extract and apply a reusable Naver Blog writing style through a choice-based interview. When explicitly requested, also plan, generate, QA, and place context-aware cover and inline images. Use for personal blog tone, style profiles, style-matched drafts or revisions, and image-inclusive Naver Blog posts."
 ---
 
 # Naver Blog Style
@@ -12,7 +12,7 @@ Build a personal writing-style profile that can be applied across topics. Separa
 - Stable: voice, reader distance, emotional temperature, sentence rhythm, paragraph density, structure, evidence posture, formatting, and forbidden patterns.
 - Variable: subject matter, facts, keywords, examples, search intent, and call to action.
 
-This skill is a style elicitation and application workflow. It is not a promise of search ranking and must not invent a fixed character-count, image-count, hashtag-count, or algorithm loophole.
+This skill is primarily a style elicitation and application workflow. It also has an optional visual-composition mode for explicit image requests. It is not a promise of search ranking and must not invent a fixed character-count, image-count, hashtag-count, or algorithm loophole.
 
 ## Choice-first interview protocol
 
@@ -89,9 +89,43 @@ Before writing a post:
 - Use original experience, screenshots, examples, or sources where appropriate.
 - End with a useful summary or natural next step; do not manufacture urgency.
 
+## Optional visual-composition mode
+
+Enter this mode only when the user explicitly asks for a representative image, cover image, section images, images inserted into the article, or an image-inclusive draft. A writing-only request must remain text-only and must not invoke image generation.
+
+Route explicit visual requests into the smallest matching mode:
+
+- `plan-only`: The user asks for image positions, concepts, prompts, or a storyboard but not generated files.
+- `generate-and-compose`: The user asks to create images and place them in the article.
+- `edit-existing`: The user asks to alter supplied or previously generated images; use an image-editing flow rather than generating unrelated replacements.
+
+Finalize and fact-check the article before visual planning. Then read [`references/visual-composition-workflow.md`](references/visual-composition-workflow.md). Read [`references/image-generation-modes.md`](references/image-generation-modes.md) when choosing between photography, illustration, infographic, or UI-like visuals. Read [`references/image-slot-manifest.md`](references/image-slot-manifest.md) before creating a manifest or inserting files.
+
+### Visual routing and boundaries
+
+- Select image slots by informational or emotional value, not by a fixed image count and not automatically for every heading.
+- Let the confirmed writing profile influence visual temperature, palette, reader distance, and humor without modifying the profile file.
+- Prefer actual user screenshots or official source material when exact UI, forms, policies, or instructions matter. Do not fabricate a branded interface, official document, evidence photo, or experience record.
+- Keep important information in article text. Images may support the explanation but must not become the only carrier of facts.
+- Avoid in-image Korean text unless it is essential. Prefer article text, captions, and alt text because generated text can be unreliable.
+- Treat photorealistic generated scenes as illustrative. If a reader could mistake one for the author's evidence or experience, label it as an image created to aid understanding.
+
+### Output contract
+
+For `generate-and-compose`, produce and report:
+
+1. The final fact-checked article with explicit image-slot markers
+2. A JSON v1 image manifest containing purpose, placement, mode, prompt, alt text, caption, path, and approval status
+3. Final local image files under `assets/<post-slug>/`
+4. A separate Markdown article with approved images inserted
+5. A short failure report for any unresolved slot
+
+Use filenames shaped like `NN-<semantic-name>.png`. Never overwrite an existing image or article unless the user explicitly requests replacement; create a versioned sibling instead. Project-bound generated images must be copied into the workspace rather than left only in the generator's default output directory.
+
+If generation or visual QA fails, retry at most once per slot with one targeted correction. If it still fails, keep the slot unresolved, report the reason, and continue only where the remaining article is still useful. If a required source image is missing, ask for that image instead of inventing it.
+
 ## Naver-specific guardrails
 
 Use Naver's official Search Advisor guidance as a quality reference: original experience and expertise, topic consistency, authentic and transparent writing, readable headings and paragraphs, concise and accurate titles, important information in text, and ongoing maintenance. Avoid keyword stuffing, copied or lightly rephrased material, misleading titles/thumbnails, and content that is mostly a link or advertisement.
 
 Reference: https://searchadvisor.naver.com/guide/content-basic
-
