@@ -35,7 +35,7 @@
 **문체는 고정하고, 주제만 바꿉니다.**  
 말투·리듬·근거 사용법·문단 구조를 프로필로 분리하고, 명시적으로 요청한 경우에만 실사·창작·인포그래픽을 생성해 원고에 배치합니다.
 
-[빠른 시작](#-빠른-시작) · [핵심 기능](#-핵심-기능) · [작동 방식](#-작동-방식) · [이미지 구성](#-visual-composer) · [파일 구조](#-파일-구조) · [사용 예시](#-사용-예시)
+[빠른 시작](#-빠른-시작) · [핵심 기능](#-핵심-기능) · [작동 방식](#-작동-방식) · [이미지 구성](#-visual-composer) · [제목 최적화](#-제목-최적화-스킬) · [파일 구조](#-파일-구조) · [사용 예시](#-사용-예시)
 
 </div>
 
@@ -320,6 +320,23 @@ QA를 통과한 이미지만 manifest를 이용해 원고에 삽입해줘.
 
 </details>
 
+## 🏷️ 제목 최적화 스킬
+
+[`skills/naver-title`](./skills/naver-title/)은 주제어나 기존 제목을 받아 네이버 검색형·홈판형·혼합형 제목 후보를 만드는 독립 스킬입니다. 제목과 본문의 일치, 근거 없는 수치·경험, 키워드 반복, 클릭베이트 위험도 함께 검수합니다.
+
+| 호출 방법 | 기본 출력 |
+|---|---|
+| `$naver-title` | 요청한 유형과 개수에 맞춰 생성 |
+| `네이버 제목 [주제어]` | 검색형 4개·홈판형 3개·혼합형 3개·최종 추천 |
+| `네이버 타이틀 [주제어]` | 검색형 4개·홈판형 3개·혼합형 3개·최종 추천 |
+| `네이버 주제 [주제어]` | 검색형 4개·홈판형 3개·혼합형 3개·최종 추천 |
+
+```text
+네이버 제목 여수밤바다 브런치 카페 무료주차장
+```
+
+이 스킬은 검색 상위 노출, 홈판 선정 또는 조회수 상승을 보장하지 않습니다. 제목 목적에 맞는 후보와 검수 근거를 제공합니다.
+
 ## 📂 파일 구조
 
 ```text
@@ -338,6 +355,15 @@ QA를 통과한 이미지만 manifest를 이용해 원고에 삽입해줘.
 │   └── 🔧 insert_article_images.py
 ├── 📁 tests
 │   └── 🧪 test_insert_article_images.py
+├── 📁 skills
+│   └── 📁 naver-title
+│       ├── 🧠 SKILL.md
+│       ├── 📁 agents
+│       │   └── ⚙️ openai.yaml
+│       └── 📁 references
+│           ├── 📐 title-framework.md
+│           ├── ✅ evaluation-rubric.md
+│           └── 📚 examples.md
 └── 📁 assets                         # 로컬 생성 이미지, Git 추적 제외
 ```
 
@@ -351,6 +377,7 @@ QA를 통과한 이미지만 manifest를 이용해 원고에 삽입해줘.
 | [`references/image-slot-manifest.md`](./references/image-slot-manifest.md) | JSON v1 슬롯 계약, 마커 문법, 검증 실패 조건 |
 | [`scripts/insert_article_images.py`](./scripts/insert_article_images.py) | 승인된 이미지를 Markdown 슬롯에 삽입하는 비파괴 CLI |
 | [`tests/test_insert_article_images.py`](./tests/test_insert_article_images.py) | 경로·슬롯·특수문자·비덮어쓰기 단위 테스트 |
+| [`skills/naver-title/`](./skills/naver-title/) | 검색형·홈판형·혼합형 제목을 생성하고 사실성·키워드 남용·클릭베이트를 검수하는 독립 스킬 |
 | [`.gitignore`](./.gitignore) | `.DS_Store`와 로컬 이미지 `assets/`를 버전 관리에서 제외 |
 | `assets/` | 생성한 대표 이미지와 본문 이미지를 로컬에서 보관하는 폴더 |
 
