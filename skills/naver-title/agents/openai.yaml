@@ -1,0 +1,6 @@
+interface:
+  display_name: "네이버 블로그 제목 최적화"
+  short_description: "검색형·홈판형·혼합형 블로그 제목 생성 및 검수"
+  default_prompt: "$naver-title 네이버 제목 여수밤바다 브런치 카페 무료주차장"
+policy:
+  allow_implicit_invocation: true
