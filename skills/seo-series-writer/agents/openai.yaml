@@ -1,0 +1,4 @@
+interface:
+  display_name: "SEO 정보성 시리즈 작성"
+  short_description: "니치 선정부터 연재 원고 작성과 사실성·회차 중복 검수까지"
+  default_prompt: "$seo-series-writer 홈 에스프레소와 핸드드립을 주제로 15편 목차와 제1편을 작성해줘."
