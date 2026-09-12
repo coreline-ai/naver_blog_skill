@@ -1,0 +1,21 @@
+{
+ "schema":"smarteditor-observation/v1","environment":"simulation","target_blog":"demo-blog",
+ "coverage":"complete","body_root_observed":true,"observed_at":"2026-09-12T16:40:00+09:00","evidence_ref":"mock://independently-authored-ui-fixture",
+ "title_fields":[{"component_id":"ui-title","text":"테스트 제목"}],
+ "components":[
+  {"component_id":"ui01","kind":"quotation","text":"첫 소제목 둘째 줄","marks":[],"style":"quotation_bubble"},
+  {"component_id":"ui02","kind":"paragraph","text":"본문의 중요한 말","marks":[{"start":4,"end":7,"type":"bold"}]},
+  {"component_id":"ui03","kind":"image","loaded":true,"asset_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","asset_evidence_ref":"mock://first-upload-binding"},
+  {"component_id":"ui04","kind":"paragraph","text":"항목: A\n설명: 내용","marks":[]},
+  {"component_id":"ui05","kind":"paragraph","text":"1. 먼저","marks":[{"start":3,"end":5,"type":"bold"}]},
+  {"component_id":"ui06","kind":"paragraph","text":"2. 다음","marks":[]},
+  {"component_id":"ui07","kind":"quotation","text":"핵심 요약","marks":[],"style":"quotation_line"},
+  {"component_id":"ui08","kind":"paragraph","text":"요약 설명","marks":[]},
+  {"component_id":"ui09","kind":"paragraph","text":"보조 소제목","marks":[]},
+  {"component_id":"ui10","kind":"image","loaded":true,"asset_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","asset_evidence_ref":"mock://second-upload-binding"},
+  {"component_id":"ui11","kind":"paragraph","text":"이미지 설명","marks":[]},
+  {"component_id":"ui12","kind":"divider"}
+ ],
+ "tags_observed":true,"tags":["테스트","검증"],"unsupported_components":[],"recovery_pending":false,"inflight_operations":[],
+ "draft_identity":{"reference":"mock-draft-7","matched_unique":true,"evidence_ref":"mock://unique-list-match"}
+}

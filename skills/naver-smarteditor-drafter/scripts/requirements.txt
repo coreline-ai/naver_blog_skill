@@ -1,0 +1,2 @@
+# Required for decoding local PNG/JPEG assets. No automatic installation.
+Pillow>=10.0,<13

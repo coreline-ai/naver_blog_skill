@@ -266,6 +266,32 @@ def _atomic_write(path: Path, content: str) -> None:
         raise
 
 
+def compose_article_text(
+    article_path: str | Path,
+    manifest_path: str | Path,
+    *,
+    root: str | Path | None = None,
+    absolute_image_paths: bool = False,
+) -> tuple[str, int]:
+    """Compose without writing. Absolute links bridge source-relative converters."""
+    project_root = Path.cwd().resolve() if root is None else Path(root).resolve()
+    if not project_root.is_dir():
+        raise CompositionError(f"Project root does not exist: {project_root}")
+    article = _resolve_cli_path(article_path, project_root, "article")
+    manifest = _resolve_cli_path(manifest_path, project_root, "manifest")
+    if not article.is_file() or not manifest.is_file():
+        raise CompositionError("Article and manifest must be existing files")
+    data = _load_json(manifest)
+    slots = _validate_manifest(data, project_root)
+    if absolute_image_paths:
+        slots = [{**slot, "path": str((project_root / slot["path"]).resolve())} for slot in slots]
+    try:
+        article_text = article.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise CompositionError(f"Unable to read article {article}: {exc}") from exc
+    return _compose_text(article_text, slots), len(slots)
+
+
 def compose_article(
     article_path: str | Path,
     manifest_path: str | Path,
@@ -289,16 +315,9 @@ def compose_article(
     if output.exists() and not force:
         raise CompositionError(f"Output already exists; use --force to replace it: {output}")
 
-    try:
-        article_text = article.read_text(encoding="utf-8")
-    except OSError as exc:
-        raise CompositionError(f"Unable to read article {article}: {exc}") from exc
-
-    data = _load_json(manifest)
-    slots = _validate_manifest(data, project_root)
-    composed = _compose_text(article_text, slots)
+    composed, count = compose_article_text(article, manifest, root=project_root)
     _atomic_write(output, composed)
-    return len(slots)
+    return count
 
 
 def _build_parser() -> argparse.ArgumentParser:

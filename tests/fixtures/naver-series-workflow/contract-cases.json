@@ -1,0 +1,14 @@
+{
+  "schema": "workflow-contract-cases/v1",
+  "cases": [
+    {"name": "complete_range", "requested": [3,4,5], "found": [3,4,5], "missing": [], "ready_after_valid_review": true},
+    {"name": "missing_requested_episode", "requested": [3,4,5], "found": [3,5], "missing": [4], "ready_after_valid_review": false},
+    {"name": "explicit_sparse_range", "requested": [3,5], "found": [3,5], "missing": [], "ready_after_valid_review": true},
+    {"name": "episode_identity_collision", "filename": "episode-04.json", "internal_episode": 3, "error": "EPISODE_IDENTITY_CONFLICT", "writes_to_existing_outputs": 0},
+    {"name": "editor_notes_enter_body", "markdown": "**편집자용 시리즈 안내 — 게시 본문 제외**\n\n# 제목\n\n본문", "error": "EDITORIAL_BOUNDARY_AMBIGUOUS", "automatic_deletions": 0},
+    {"name": "body_only", "markdown": "# 제목\n\n본문", "editorial": {"notes": ["게시 본문 제외"]}, "metadata_in_canonical_blocks": false},
+    {"name": "legacy_saved_report", "old_state": "saved_verified", "new_interpretation": "legacy_saved_reported", "reopened_verified": false, "source_changes": 0},
+    {"name": "save_ack_only", "state": "save_acknowledged", "observed_reopened": null, "reopened_verified": false},
+    {"name": "partial_blank_observation", "coverage": "partial", "empty_paragraph_count": 1, "expected_verification": "unknown"}
+  ]
+}

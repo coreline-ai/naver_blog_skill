@@ -4,7 +4,7 @@
 
 <img width="2752" height="1536" alt="나만의_블로그_문체_스타일_스킬" src="https://github.com/user-attachments/assets/1e2d5b71-fdac-4ccd-b873-545a3ea04663" />
 
-### 선택형 인터뷰로 나만의 문체를 만들고, 필요할 때 문맥에 맞는 대표·본문 이미지까지 구성하는 프로필 기반 네이버 블로그 스킬
+### 선택형 인터뷰로 나만의 문체를 만들고, SEO 시리즈 작성부터 네이버 SmartEditor 임시저장까지 연결하는 블로그 스킬 모음
 
 <p>
   <a href="./SKILL.md">
@@ -35,7 +35,7 @@
 **문체는 고정하고, 주제만 바꿉니다.**  
 말투·리듬·근거 사용법·문단 구조를 프로필로 분리하고, 명시적으로 요청한 경우에만 실사·창작·인포그래픽을 생성해 원고에 배치합니다.
 
-[빠른 시작](#-빠른-시작) · [핵심 기능](#-핵심-기능) · [작동 방식](#-작동-방식) · [이미지 구성](#-visual-composer) · [제목 최적화](#-제목-최적화-스킬) · [시리즈 작성](#seo-series-writer) · [파일 구조](#-파일-구조) · [사용 예시](#-사용-예시)
+[빠른 시작](#-빠른-시작) · [핵심 기능](#-핵심-기능) · [작동 방식](#-작동-방식) · [이미지 구성](#-visual-composer) · [제목 최적화](#-제목-최적화-스킬) · [시리즈 작성](#seo-series-writer) · [SmartEditor 초안](#naver-smarteditor-drafter) · [전체 워크플로](#naver-series-workflow) · [파일 구조](#-파일-구조) · [사용 예시](#-사용-예시)
 
 </div>
 
@@ -79,6 +79,9 @@
 | 🎨 **문맥 기반 이미지 구성** | 이미지가 필요한 소제목만 선별하고 실사·창작·인포그래픽을 목적에 맞게 선택합니다. |
 | 🧾 **Manifest 기반 삽입** | 승인된 로컬 이미지만 명시적 슬롯에 비파괴적으로 삽입합니다. |
 | 👁️ **시각 QA** | 문맥, 사실성, 손·얼굴, 글자, 브랜드, 스타일, 모바일 크롭을 확인합니다. |
+| 📚 **SEO 시리즈 작성** | 니치·목차·회차별 문제 해결형 원고를 만들고 사실성과 회차 중복을 검수합니다. |
+| 🧱 **네이버 정본 준비** | Markdown·구조형 JSON을 `naver-post/v1`으로 변환하고 이미지·태그·서식을 검사합니다. |
+| ✍️ **안전한 순차 임시저장** | SmartEditor에서 한 편씩 입력·임시저장·재열기·빈 화면 확인 후 다음 회차로 진행합니다. |
 | 🛡️ **네이버 품질 가드레일** | 키워드 반복, 복제 콘텐츠, 낚시성 제목, 과장 광고, 억지 CTA를 피합니다. |
 
 ## 🚀 빠른 시작
@@ -122,6 +125,28 @@ docs/naver-blog-style-profile.md에 저장된 프로필을 먼저 로드하고,
 실사·창작·인포그래픽은 소제목의 문맥과 분위기에 맞게 선택하고,
 검수에 통과한 이미지만 원고 중간에 넣어줘.
 ```
+
+### 6. 시리즈를 SmartEditor 임시저장까지 연결
+
+처음에는 브라우저를 건드리지 않는 `prepare`로 검사하고, 통과 결과를 확인한 뒤 `draft`를 별도로 요청하는 방식을 권장합니다.
+
+```text
+이 저장소의 skills/naver-series-workflow/SKILL.md를 읽고 적용해줘.
+제3편부터 제15편까지 원고·이미지·태그를 먼저 prepare 해줘.
+이번 단계에서는 SmartEditor를 조작하지 마.
+```
+
+준비가 끝나면 대상 URL을 지정합니다.
+
+```text
+검수가 완료된 회차를 아래 SmartEditor에 한 편씩 임시저장해줘.
+각 편을 다시 열어 검증하고 새 빈 화면 확인 후 다음 편으로 진행해줘.
+공개 발행과 예약 발행은 하지 마.
+
+대상: https://blog.naver.com/블로그아이디?Redirect=Write&categoryNo=카테고리번호
+```
+
+자세한 모드, 재개 방법과 서식 매핑은 [SEO 시리즈 전체 워크플로 사용법](#naver-series-workflow)을 참고하세요.
 
 > [!TIP]
 > 이미 프로필이 있다면 인터뷰를 반복할 필요가 없습니다. 프로필 파일을 먼저 로드하고 주제, 글 유형, 독자 의도만 전달하면 됩니다.
@@ -348,8 +373,10 @@ QA를 통과한 이미지만 manifest를 이용해 원고에 삽입해줘.
 | `naver-blog-style` | 개인 문체 인터뷰·적용, 명시적 요청 시 이미지 구성 |
 | `naver-title` | 네이버 검색형·홈판형·혼합형 제목 |
 | `seo-series-writer` | 정보성 시리즈 기획·본문·이어쓰기·검수 |
+| `naver-smarteditor-drafter` | 완성 원고 검증·SmartEditor 순차 입력·임시저장 |
+| `naver-series-workflow` | 시리즈 원고·이미지 준비부터 SmartEditor 순차 임시저장·재개까지 연결 |
 
-새 스킬은 기존 문체 프로필을 자동으로 적용하거나 변경하지 않으며 다른 두 스킬 없이도 사용할 수 있습니다.
+`seo-series-writer`는 기존 문체 프로필을 자동으로 적용하거나 변경하지 않으며 다른 스킬 없이도 독립적으로 사용할 수 있습니다.
 
 ### 저장소에서 직접 사용
 
@@ -375,6 +402,214 @@ $seo-series-writer 집 안 종이 문서 정리를 주제로
 > [!IMPORTANT]
 > ‘애드센스 승인용’은 콘텐츠 품질을 고려한 작성 의도입니다. 승인·검색 순위·수익을 보장하지 않고, 허구의 체험·실험·출처를 만들지 않습니다. 15편이나 특정 글자 수는 승인 공식이 아닙니다. 이 스킬은 원고를 작성하며 자동 게시·예약·이미지 생성은 수행하지 않습니다.
 
+<a id="naver-smarteditor-drafter"></a>
+
+## ✍️ 네이버 SmartEditor 초안 작성 스킬
+
+[`skills/naver-smarteditor-drafter`](./skills/naver-smarteditor-drafter/)는 완성된 Markdown 또는 구조형 JSON을 `naver-post/v1`으로 변환하고, 사용자가 명시적으로 요청한 경우 로그인된 SmartEditor에 **한 편씩** 입력해 임시저장하는 독립 스킬입니다.
+
+```text
+$naver-smarteditor-drafter를 사용해 제3편부터 제15편까지 사전검증해줘.
+검증에 통과하면 한 편씩 SmartEditor에 작성하고 임시저장하되 발행하지 마.
+```
+
+준비만 수행할 수도 있습니다.
+
+```bash
+python3.11 skills/naver-smarteditor-drafter/scripts/build_naver_post.py \
+  --input-root /absolute/path/to/series \
+  --output-root /absolute/path/to/naver-smarteditor-runs \
+  --run-id prepared \
+  --batch --episode-min 3 --episode-max 15 \
+  --expected-images 5 --expected-tags 6 --check
+```
+
+H2 소제목은 기본적으로 SmartEditor의 `인용구 3` 말풍선형으로, `핵심 요약`은 `인용구 2` 라인형으로 매핑합니다. 이미지 위치는 Markdown의 이미지 블록 순서가 정본입니다. 전체 파일 검증은 일괄 수행할 수 있지만 브라우저 작성은 회차별 임시저장과 다음 빈 편집기 확인이 끝난 뒤에만 진행합니다.
+
+> [!IMPORTANT]
+> 기존 편집 내용을 자동 삭제하거나 여러 글을 동시에 작성하지 않습니다. 이미지·저장·빈 화면 검증이 실패하면 다음 회차를 중단합니다. 공개 발행과 예약 발행은 이 스킬의 범위가 아닙니다.
+
+<a id="naver-series-workflow"></a>
+
+## 🚦 SEO 시리즈 전체 워크플로 사용법
+
+[`skills/naver-series-workflow`](./skills/naver-series-workflow/)는 `seo-series-writer`와 `naver-smarteditor-drafter`를 연결하는 총괄 스킬입니다. 여러 회차의 원고와 이미지를 한 번에 검사할 수 있지만, 실제 SmartEditor 입력은 **항상 한 편씩 순차적으로** 수행합니다.
+
+### 어떤 스킬을 호출해야 하나요?
+
+| 하고 싶은 일 | 사용할 스킬 |
+|---|---|
+| 주제만 가지고 시리즈 목차와 원고 작성 | `$seo-series-writer` |
+| 기존 원고 제목 후보만 생성 | `$naver-title` |
+| 완성된 단일 원고를 네이버용으로 검사·임시저장 | `$naver-smarteditor-drafter` |
+| 여러 회차의 작성·준비·임시저장을 하나의 흐름으로 연결 | `$naver-series-workflow` |
+
+### 실행 모드
+
+| 모드 | 동작 | 브라우저 변경 |
+|---|---|---|
+| `prepare` | 원고·이미지·태그·정본·검수 상태를 확인하고 준비 패키지 생성 | 없음 |
+| `draft` | 검수 통과 회차를 SmartEditor에 입력하고 임시저장·재열기 검증 | 있음 |
+| `resume` | 실행 이력과 현재 화면을 비교하고 중복 없이 다음 안전 지점부터 재개 | 있음 |
+| `status` | 로컬 실행 이력과 다음 조치를 조회 | 없음 |
+
+모드를 적지 않으면 안전한 기본값인 `prepare`로 동작합니다. `draft`와 `resume`은 사용자가 대상 블로그와 회차를 지정하고 실제 SmartEditor 조작을 명시적으로 요청한 경우에만 수행합니다.
+
+### 사용 전 준비물
+
+- 작성할 회차 범위 또는 기존 원고 파일 경로
+- 회차별로 사용할 로컬 이미지 파일과 원하는 이미지 수
+- `#`과 공백을 포함한 태그 문자열 제한. 이 프로젝트의 예시는 100자 이내입니다.
+- `draft`/`resume` 실행 시 로그인된 브라우저와 정확한 블로그 글쓰기 URL
+- 공개 발행 여부. 이 워크플로의 기본 범위는 **임시저장까지만**입니다.
+
+### 방법 1 — 저장소에서 직접 사용
+
+저장소 폴더를 Codex 작업 폴더로 연 뒤, 스킬 파일을 직접 읽도록 요청합니다. `skills/`에 폴더가 존재하는 것만으로 다른 환경에 자동 설치되지는 않습니다.
+
+```text
+이 저장소의 skills/naver-series-workflow/SKILL.md를 읽고 적용해줘.
+현재 프로젝트의 제3편부터 제15편까지 네이버용으로 준비해줘.
+
+조건:
+- 각 편 이미지 5장
+- 태그는 #과 공백을 포함해 100자 이내
+- H2는 말풍선형 인용구
+- 핵심 요약 제목은 라인형 인용구
+- 먼저 prepare만 실행
+- SmartEditor 입력과 공개 발행은 하지 않음
+```
+
+### 방법 2 — 설치·등록된 환경에서 호출
+
+```text
+$naver-series-workflow
+
+현재 프로젝트의 제3편부터 제15편까지 네이버용으로 준비해줘.
+각 편에는 이미지 5장을 사용하고 태그는 100자 이내로 검사해줘.
+이번 요청은 prepare 모드로만 실행해줘.
+```
+
+### 단계 1 — 원고와 이미지 사전 준비
+
+`prepare` 단계에서는 다음 순서로 진행합니다.
+
+1. `제3편~제15편`을 13개 회차로 정확히 계산합니다.
+2. 원고 본문, 편집 메모, 검수 자료를 서로 분리합니다.
+3. 각 이미지의 존재 여부·형식·해시·순서를 검사합니다.
+4. Markdown 또는 구조형 JSON을 `naver-post/v1` 정본으로 변환합니다.
+5. 제목·본문·이미지 수·태그 제한·지원 서식을 검사합니다.
+6. 모든 대상 회차가 통과한 경우에만 SmartEditor 실행 대기열을 준비합니다.
+
+CLI로 준비하려면 manifest와 입출력 루트를 지정합니다.
+
+```bash
+python3.11 skills/naver-series-workflow/scripts/prepare_series.py prepare \
+  --manifest /absolute/path/to/series.json \
+  --input-root /absolute/path/to/series-input \
+  --output-root /absolute/path/to/prepared-runs \
+  --run-id review-pass-01
+```
+
+`--check`는 출력 파일을 만들지 않고 검사만 합니다. 기존 원고의 핵심 사실이나 이미지가 검토 대기 상태라면 `draft` 단계로 넘어가지 않습니다.
+
+### 단계 2 — SmartEditor에 순차 임시저장
+
+사전검증이 끝난 후 다음처럼 실제 작업을 명시적으로 요청합니다.
+
+```text
+$naver-series-workflow
+
+준비와 검수가 완료된 제3편부터 제15편까지 아래 SmartEditor에
+한 편씩 순차 입력하고 임시저장해줘.
+
+대상:
+https://blog.naver.com/블로그아이디?Redirect=Write&categoryNo=카테고리번호
+
+규칙:
+- 각 편 저장 후 저장된 초안을 다시 열어 검증
+- 새 글쓰기 빈 화면을 확인한 뒤 다음 편 진행
+- 기존 글과 기존 초안은 삭제하지 않음
+- 공개 발행과 예약 발행은 하지 않음
+```
+
+회차별 실행 순서는 다음과 같습니다.
+
+```mermaid
+flowchart LR
+    A["새 글쓰기 빈 화면 확인"] --> B["제목·본문 입력"]
+    B --> C["지정 위치에 이미지 업로드"]
+    C --> D["인용구·굵게·구분선·태그 적용"]
+    D --> E["전체 내용 대조"]
+    E --> F["임시저장 완료 메시지 확인"]
+    F --> G["저장 초안 다시 열기"]
+    G --> H["본문·이미지·태그 재검증"]
+    H --> I["새 빈 편집기 확인"]
+    I --> J["다음 회차"]
+```
+
+> [!IMPORTANT]
+> 13편을 준비하는 파일 검사는 일괄 수행할 수 있지만, 브라우저 작성은 13개 창에서 동시에 진행하지 않습니다. 한 회차가 `임시저장 확인 → 재열기 검증 → 새 빈 화면 확인`까지 통과해야 다음 회차를 시작합니다.
+
+### SmartEditor 서식 매핑
+
+| 정본 요소 | SmartEditor 적용 |
+|---|---|
+| 제목 | 제목 입력란 |
+| 일반 문단 | 기본 본문 컴포넌트 |
+| H2 소제목 | `인용구 3` 말풍선형 |
+| `핵심 요약` 제목 라벨 | `인용구 2` 라인형 |
+| 강조 범위 | 굵게 서식 |
+| 표·복잡한 목록 | 모바일 가독성을 고려한 문단 대체 서식 |
+| 이미지 | `render_plan`에 기록된 정확한 본문 위치 |
+| 마무리 구간 | 구분선 |
+| 태그 | 발행 설정의 태그 입력 영역 |
+
+태그 입력을 위해 발행 설정을 열 수 있지만, 설정 창을 여는 버튼과 최종 공개 발행 버튼을 구분합니다. 이 스킬은 최종 발행 제출을 누르지 않습니다.
+
+### 단계 3 — 중단된 작업 재개
+
+브라우저 종료, 로그인 만료, 업로드 결과 불확실 등의 이유로 중단되면 새로 작성하지 말고 `resume`을 사용합니다.
+
+```text
+$naver-series-workflow
+
+이전 실행 기록과 현재 SmartEditor 상태를 먼저 대조해줘.
+이미 검증된 동일 버전은 건너뛰고,
+중복 작성 없이 다음 안전한 회차부터 resume 해줘.
+공개 발행은 하지 마.
+```
+
+스킬은 원고 revision, 이미지 해시, 임시저장 결과, 재열기 검증 기록을 비교합니다. 저장 여부를 확인할 수 없거나 현재 화면에 식별할 수 없는 내용이 남아 있으면 자동으로 재시도하지 않고 중단합니다.
+
+### 단계 4 — 상태만 확인
+
+```text
+$naver-series-workflow status
+
+현재 실행 기록에서 완료 회차, 대기 회차, 실패 회차와
+다음으로 수행해야 할 작업을 알려줘. 브라우저는 조작하지 마.
+```
+
+CLI 상태 조회는 다음과 같습니다.
+
+```bash
+python3.11 skills/naver-series-workflow/scripts/prepare_series.py status \
+  --run-directory /absolute/path/to/prepared-run \
+  --execution-root /absolute/path/to/execution-ledger
+```
+
+상태 보고에서는 `구조 검사 통과`, `콘텐츠 검수 완료`, `준비 완료`, `임시저장 확인`, `재열기 검증`, `최종 빈 화면 확인`을 서로 다른 단계로 표시합니다.
+
+### 책임 범위
+
+- `seo-series-writer`는 원고를 작성하지만 SmartEditor를 조작하지 않습니다.
+- 이미지 생성은 사용자가 명시적으로 요청했을 때 별도 이미지 도구로 수행합니다.
+- `naver-smarteditor-drafter`는 완성된 원고와 실제 이미지 파일만 입력합니다.
+- `naver-series-workflow`는 작성·검수·입력 사이의 계약과 재개 상태를 관리합니다.
+- 어떤 스킬도 AdSense 승인, 검색 상위 노출, 조회수 상승을 보장하지 않습니다.
+- 기본 자동화 범위는 비공개 임시저장이며 공개·예약 발행과 기존 글 삭제는 수행하지 않습니다.
+
 ## 📂 파일 구조
 
 ```text
@@ -392,7 +627,15 @@ $seo-series-writer 집 안 종이 문서 정리를 주제로
 ├── 📁 scripts
 │   └── 🔧 insert_article_images.py
 ├── 📁 tests
-│   └── 🧪 test_insert_article_images.py
+│   ├── 🧪 test_insert_article_images.py
+│   ├── 🧪 test_build_naver_post.py
+│   ├── 🧪 test_asset_integrity.py
+│   ├── 🧪 test_execution_state.py
+│   ├── 🧪 test_prepare_series.py
+│   ├── 🧪 test_series_simulation.py
+│   ├── 🧪 test_ui_evidence_contract.py
+│   ├── 🧪 test_smarteditor_checks.mjs
+│   └── 📁 fixtures
 ├── 📁 skills
 │   ├── 📁 naver-title
 │   │   ├── 🧠 SKILL.md
@@ -402,16 +645,39 @@ $seo-series-writer 집 안 종이 문서 정리를 주제로
 │   │       ├── 📐 title-framework.md
 │   │       ├── ✅ evaluation-rubric.md
 │   │       └── 📚 examples.md
-│   └── 📁 seo-series-writer
+│   ├── 📁 seo-series-writer
+│   │   ├── 🧠 SKILL.md
+│   │   ├── 📁 agents
+│   │   │   └── ⚙️ openai.yaml
+│   │   └── 📁 references
+│   │       ├── 🔄 series-workflow.md
+│   │       ├── 📝 article-template.md
+│   │       ├── 🛡️ quality-policy.md
+│   │       ├── ✅ evaluation-rubric.md
+│   │       └── 📚 examples.md
+│   ├── 📁 naver-smarteditor-drafter
+│   │   ├── 🧠 SKILL.md
+│   │   ├── 📁 agents
+│   │   │   └── ⚙️ openai.yaml
+│   │   ├── 📁 scripts
+│   │   │   ├── 🔧 build_naver_post.py
+│   │   │   ├── 🔐 asset_integrity.py
+│   │   │   ├── 🧾 post_contract.py
+│   │   │   ├── 🗃️ execution_state.py
+│   │   │   └── 🔎 smarteditor_checks.mjs
+│   │   └── 📁 references
+│   │       ├── 🧾 naver-post-v1.md
+│   │       ├── 🖥️ smarteditor-runbook.md
+│   │       └── 🛡️ recovery-and-safety.md
+│   └── 📁 naver-series-workflow
 │       ├── 🧠 SKILL.md
 │       ├── 📁 agents
 │       │   └── ⚙️ openai.yaml
+│       ├── 📁 scripts
+│       │   └── 🔧 prepare_series.py
 │       └── 📁 references
-│           ├── 🔄 series-workflow.md
-│           ├── 📝 article-template.md
-│           ├── 🛡️ quality-policy.md
-│           ├── ✅ evaluation-rubric.md
-│           └── 📚 examples.md
+│           ├── 🧾 series-contract.md
+│           └── 🔄 workflow-runbook.md
 └── 📁 assets                         # 로컬 생성 이미지, Git 추적 제외
 ```
 
@@ -427,6 +693,12 @@ $seo-series-writer 집 안 종이 문서 정리를 주제로
 | [`tests/test_insert_article_images.py`](./tests/test_insert_article_images.py) | 경로·슬롯·특수문자·비덮어쓰기 단위 테스트 |
 | [`skills/naver-title/`](./skills/naver-title/) | 검색형·홈판형·혼합형 제목을 생성하고 사실성·키워드 남용·클릭베이트를 검수하는 독립 스킬 |
 | [`skills/seo-series-writer/`](./skills/seo-series-writer/) | 니치 선정·시리즈 목차·문제 해결형 원고·회차 이어쓰기·사실성 검수의 독립 스킬 |
+| [`skills/naver-smarteditor-drafter/`](./skills/naver-smarteditor-drafter/) | 완성 원고를 검증하고 SmartEditor에 순차 입력·임시저장하는 독립 스킬 |
+| [`skills/naver-smarteditor-drafter/scripts/build_naver_post.py`](./skills/naver-smarteditor-drafter/scripts/build_naver_post.py) | Markdown·구조형 JSON을 `naver-post/v1`과 사전검증 보고서로 변환하는 CLI |
+| [`skills/naver-smarteditor-drafter/scripts/execution_state.py`](./skills/naver-smarteditor-drafter/scripts/execution_state.py) | 회차별 입력·저장·재열기·빈 화면 이벤트와 writer lease를 관리하는 실행 저장소 |
+| [`skills/naver-smarteditor-drafter/scripts/smarteditor_checks.mjs`](./skills/naver-smarteditor-drafter/scripts/smarteditor_checks.mjs) | 기대 정본과 실제 SmartEditor 관찰값을 비교하는 검사기 |
+| [`skills/naver-series-workflow/`](./skills/naver-series-workflow/) | 시리즈 원고·이미지 준비, 검수 게이트, SmartEditor 순차 임시저장·재개를 연결하는 총괄 스킬 |
+| [`skills/naver-series-workflow/scripts/prepare_series.py`](./skills/naver-series-workflow/scripts/prepare_series.py) | `naver-series/v1` manifest를 검사하고 불변 준비 run과 상태 보고서를 만드는 CLI |
 | [`.gitignore`](./.gitignore) | `.DS_Store`와 로컬 이미지 `assets/`를 버전 관리에서 제외 |
 | `assets/` | 생성한 대표 이미지와 본문 이미지를 로컬에서 보관하는 폴더 |
 
@@ -501,6 +773,22 @@ $seo-series-writer 집 안 종이 문서 정리를 주제로
 ### 어떤 주제에도 사용할 수 있나요?
 
 리뷰, 가이드, 경험담, 비교, 공지처럼 대부분의 블로그 글에 적용할 수 있습니다. 금융·의료·법률처럼 정확성이 중요한 주제는 최신 공식 자료 확인이 추가로 필요합니다.
+
+### 여러 편을 동시에 SmartEditor에 작성하나요?
+
+아닙니다. 파일 준비와 사전검사는 여러 편을 일괄 처리할 수 있지만, SmartEditor 입력은 한 편씩 진행합니다. 한 회차의 임시저장, 재열기 검증, 다음 빈 화면 확인이 모두 끝난 뒤 다음 회차를 시작합니다.
+
+### 기존 Markdown 원고를 그대로 사용할 수 있나요?
+
+가능합니다. `naver-smarteditor-drafter`가 지원 구조를 검사하고 `naver-post/v1` 정본으로 변환합니다. 이미지 경로, 태그 제한, H2·인용구·굵게 등 지원 서식에 문제가 있으면 SmartEditor 조작 전에 실패로 보고합니다.
+
+### 작업이 중간에 끊기면 처음부터 다시 작성하나요?
+
+아닙니다. `resume` 모드에서 원고 revision, 이미지 해시, 저장 및 재열기 이벤트와 현재 화면을 대조합니다. 동일 버전의 검증된 초안은 건너뛰며, 저장 여부가 불확실하면 중복 작성을 피하기 위해 자동 재시도하지 않습니다.
+
+### 임시저장 후 자동으로 공개 발행되나요?
+
+아닙니다. SmartEditor 스킬의 자동화 범위는 비공개 임시저장과 재검증까지입니다. 발행 설정은 태그 입력을 위해 열 수 있지만 최종 공개·예약 발행 버튼은 누르지 않습니다.
 
 ### 이미지도 저장소에 함께 올라가나요?
 
