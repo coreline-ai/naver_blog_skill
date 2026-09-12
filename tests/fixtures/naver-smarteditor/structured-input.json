@@ -1,0 +1,12 @@
+{
+  "episode": 9,
+  "title": "구조형 입력 테스트",
+  "content": [
+    {"type": "heading", "level": 2, "text": "순서 확인"},
+    {"type": "steps", "items": [{"title": "준비", "text": "파일을 확인합니다."}, "저장합니다."]},
+    {"type": "comparison", "items": [{"label": "A", "text": "첫 설명"}, {"label": "B", "text": "둘째 설명"}]},
+    {"type": "checklist", "items": ["제목 확인", "본문 확인"]},
+    {"type": "callout", "variant": "summary", "title": "핵심 요약", "text": "순서를 지킵니다."}
+  ],
+  "seo_tags": ["구조형입력", "초안검증"]
+}

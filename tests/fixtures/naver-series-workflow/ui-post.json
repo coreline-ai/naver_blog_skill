@@ -1,0 +1,14 @@
+{
+  "schema":"naver-post/v1","episode":3,"source":"/fixtures/article.md","title":"테스트 제목",
+  "blocks":[
+    {"id":"b1","type":"heading","level":2,"style":"quotation_bubble","text":"첫 소제목\n둘째 줄"},
+    {"id":"b2","type":"paragraph","text":"본문의 중요한 말","marks":[{"start":4,"end":7,"type":"bold"}]},
+    {"id":"b3","type":"image","path":"/fixtures/one.png","alt":"첫 이미지"},
+    {"id":"b4","type":"table","columns":["항목","설명"],"rows":[["A","내용"]]},
+    {"id":"b5","type":"list","style":"ordered","items":[{"text":"먼저","marks":[{"start":0,"end":2,"type":"bold"}]},{"text":"다음"}]},
+    {"id":"b6","type":"callout","variant":"summary","title":"핵심 요약","text":"요약 설명","style":"quotation_line"},
+    {"id":"b7","type":"heading","level":3,"style":"subtitle","text":"보조 소제목"},
+    {"id":"b8","type":"image","path":"/fixtures/two.png","alt":"둘째 이미지","caption":"이미지 설명"},
+    {"id":"b9","type":"divider"}
+  ],"tags":["검증","테스트"]
+}

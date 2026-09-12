@@ -1,0 +1,4 @@
+interface:
+  display_name: "네이버 시리즈 워크플로"
+  short_description: "시리즈 원고·이미지·검수를 준비하고 승인된 임시저장을 안전하게 연결"
+  default_prompt: "$naver-series-workflow 기존 시리즈의 요청 회차를 네이버용으로 준비하고 검수 결과를 보여줘. 브라우저 입력은 하지 마."

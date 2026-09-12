@@ -1,0 +1,4 @@
+interface:
+  display_name: "네이버 SmartEditor 초안 작성"
+  short_description: "완성 원고를 네이버 블로그에 순차 입력·임시저장"
+  default_prompt: "$naver-smarteditor-drafter를 사용해 완성된 원고를 네이버 SmartEditor에 안전하게 입력하고 임시저장해줘."
