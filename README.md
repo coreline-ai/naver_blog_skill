@@ -35,7 +35,7 @@
 **문체는 고정하고, 주제만 바꿉니다.**  
 말투·리듬·근거 사용법·문단 구조를 프로필로 분리하고, 명시적으로 요청한 경우에만 실사·창작·인포그래픽을 생성해 원고에 배치합니다.
 
-[빠른 시작](#-빠른-시작) · [핵심 기능](#-핵심-기능) · [작동 방식](#-작동-방식) · [이미지 구성](#-visual-composer) · [제목 최적화](#-제목-최적화-스킬) · [시리즈 작성](#seo-series-writer) · [SmartEditor 초안](#naver-smarteditor-drafter) · [전체 워크플로](#naver-series-workflow) · [파일 구조](#-파일-구조) · [사용 예시](#-사용-예시)
+[빠른 시작](#-빠른-시작) · [핵심 기능](#-핵심-기능) · [작동 방식](#-작동-방식) · [이미지 구성](#-visual-composer) · [키워드 추천](#naver-creator-keyword-recommender) · [제목 최적화](#-제목-최적화-스킬) · [시리즈 작성](#seo-series-writer) · [SmartEditor 초안](#naver-smarteditor-drafter) · [전체 워크플로](#naver-series-workflow) · [대표 프롬프트](#skill-representative-prompts) · [파일 구조](#-파일-구조) · [사용 예시](#-사용-예시)
 
 </div>
 
@@ -79,6 +79,7 @@
 | 🎨 **문맥 기반 이미지 구성** | 이미지가 필요한 소제목만 선별하고 실사·창작·인포그래픽을 목적에 맞게 선택합니다. |
 | 🧾 **Manifest 기반 삽입** | 승인된 로컬 이미지만 명시적 슬롯에 비파괴적으로 삽입합니다. |
 | 👁️ **시각 QA** | 문맥, 사실성, 손·얼굴, 글자, 브랜드, 스타일, 모바일 크롭을 확인합니다. |
+| 📈 **최근 유입 키워드 추천** | 크리에이터 어드바이저의 완료된 최근 7일을 직전 7일과 비교해 주제를 정하고, 요청 시 블로그 홈 제목 구조를 보완해 대표 제목을 안전하게 추천합니다. |
 | 📚 **SEO 시리즈 작성** | 니치·목차·회차별 문제 해결형 원고를 만들고 사실성과 회차 중복을 검수합니다. |
 | 🧱 **네이버 정본 준비** | Markdown·구조형 JSON을 `naver-post/v1`으로 변환하고 이미지·태그·서식을 검사합니다. |
 | ✍️ **안전한 순차 임시저장** | SmartEditor에서 한 편씩 입력·임시저장·재열기·빈 화면 확인 후 다음 회차로 진행합니다. |
@@ -285,6 +286,188 @@ python3.11 scripts/insert_article_images.py \
 
 ## 💬 사용 예시
 
+<a id="skill-representative-prompts"></a>
+
+### 스킬별 대표 프롬프트
+
+아래 예시는 그대로 복사한 뒤 대괄호 안의 값만 작업에 맞게 바꾸면 됩니다. `SmartEditor` 관련 스킬도 별도 요청이 없으면 공개·예약 발행하지 않습니다.
+
+#### 1. `naver-blog-style` — 저장된 문체로 단일 글 작성
+
+```text
+$naver-blog-style
+
+docs/naver-blog-style-profile.md의 저장된 문체를 적용해
+주제 "[작성할 주제]"로 네이버 블로그 글을 작성해줘.
+
+조건:
+- 첫 문단에서 독자의 핵심 질문에 답하기
+- 사실·개인 의견·추천을 구분하기
+- 모바일에서 읽기 쉬운 짧은 문단으로 구성하기
+- 확인되지 않은 경험이나 수치를 만들지 않기
+- 이미지 생성과 게시 작업은 하지 않기
+```
+
+#### 2. `naver-creator-keyword-recommender` — 최근 유입 기반 키워드와 제목 추천
+
+```text
+$naver-creator-keyword-recommender
+
+최근 완료된 7일 데이터를 직전 7일과 비교해서
+내 블로그에 적합한 키워드 10개를 추천해줘.
+
+검색 유입에서는 글의 주제를 선정하고,
+메인 유입에서는 제목 원문을 복사하지 말고 패턴만 분석해
+각 키워드의 대표 추천 제목을 1개씩 만들어줘.
+
+본문·이미지·SmartEditor 작업은 하지 마.
+```
+
+블로그 홈의 현재 제목 구조까지 선택적으로 반영하려면 다음처럼 요청합니다.
+
+```text
+$naver-creator-keyword-recommender
+
+최근 완료된 7일 검색 유입을 직전 7일과 비교해
+내 블로그에 맞는 키워드 10개를 추천해줘.
+네이버 블로그 홈 1~10페이지는 원문을 복사하지 말고 제목 패턴만 분석해
+각 키워드의 대표 추천 제목을 1개씩 만들어줘.
+
+본문·이미지·SmartEditor 작업은 하지 마.
+```
+
+이 요청은 `recommend-with-home` 모드로 처리됩니다. 실행 결과에는 다음 내용만 포함됩니다.
+
+1. 최근 7일과 직전 7일의 수집 범위·완료 상태
+2. 검색 유입을 근거로 선정한 키워드 10개
+3. 각 키워드의 관찰 근거와 추세 분류
+4. 메인 유입과 블로그 홈의 집계 패턴을 반영한 대표 제목 1개
+5. 부분 수집, 시의성, 사실 확인 필요 여부 등의 주의사항
+
+검색 유입은 **무엇을 쓸지** 정하는 데 사용하고, 메인 유입과 블로그 홈은 **어떻게 제목을 구성할지** 판단하는 데만 사용합니다. 다른 게시물의 제목 원문이나 고유 문구를 결과에 노출하지 않으며, 확인되지 않은 숫자·인용문·경험도 새 제목에 만들지 않습니다. 최신 날짜의 일부 데이터가 지연되면 결과를 `partial`로 표시하고 상승·신규 키워드로 단정하지 않습니다.
+
+요청문에 `본문·이미지·SmartEditor 작업은 하지 마`가 있으면 키워드와 대표 제목을 출력한 뒤 종료합니다. 이후 작업은 자동으로 이어지지 않습니다.
+
+#### 3. `naver-title` — 검색형·홈판형·혼합형 제목 만들기
+
+```text
+$naver-title
+
+주제 "[핵심 주제]"와 검색 의도 "[독자가 해결하려는 문제]"를 기준으로
+검색형 4개, 홈판형 3개, 혼합형 3개를 만들어줘.
+
+후보를 사실성·키워드 반복·클릭베이트 기준으로 검수하고
+최종 추천 제목 1개를 골라줘.
+확인되지 않은 가격·기간·경험은 만들지 마.
+```
+
+#### 4. `seo-series-writer` — 정보성 시리즈 기획과 제1편 작성
+
+```text
+$seo-series-writer
+
+주제 "[시리즈 주제]"로 [원하는 편수]편의 SEO 정보성 시리즈를 기획해줘.
+먼저 전체 목차와 제1편 본문을 작성하고,
+이후에는 요청할 때 한 편씩 이어가줘.
+
+조건:
+- 각 편은 서로 다른 검색 의도와 문제를 해결하기
+- 근거 없는 체험·실험·수치를 만들지 않기
+- 핵심 요약과 다음 편 예고를 포함하기
+- 이미지 생성과 게시 작업은 하지 않기
+```
+
+#### 5. `naver-smarteditor-drafter` — 완성 원고 검증과 순차 임시저장
+
+```text
+$naver-smarteditor-drafter
+
+완성된 원고 경로 "[절대 경로]"를 naver-post/v1 형식으로 사전검증해줘.
+검증을 통과하면 지정한 네이버 SmartEditor에 한 편씩 입력하고 임시저장해줘.
+
+조건:
+- 이미지 순서는 원고의 이미지 블록 순서를 유지하기
+- H2는 말풍선형 인용구, 핵심 요약은 라인형 인용구로 적용하기
+- 임시저장 후 다시 열어 내용과 다음 빈 편집기 전환을 확인하기
+- 공개·예약 발행은 하지 않기
+```
+
+#### 6. `naver-series-workflow` — 시리즈 전체를 안전하게 준비
+
+```text
+$naver-series-workflow
+
+현재 프로젝트의 [시작 회차]부터 [종료 회차]까지
+네이버 블로그용 실행 패키지를 prepare 모드로 준비해줘.
+
+조건:
+- 회차별 원고·이미지·태그·naver-post/v1을 검증하기
+- 각 편에 이미지 [원하는 개수]장을 사용하기
+- 태그는 #과 공백을 포함해 100자 이내로 검사하기
+- 상태 파일과 다음 실행 지점을 생성하기
+- 이번 요청에서는 SmartEditor 입력과 발행을 하지 않기
+```
+
+#### 7. 전체 워크플로 — 최근 키워드 선정부터 글 3편 임시저장까지
+
+아래 프롬프트는 `naver-creator-keyword-recommender` → `naver-title` → `naver-blog-style` 또는 `seo-series-writer` → `naver-series-workflow` → `naver-smarteditor-drafter`를 하나의 안전한 작업으로 연결하는 대표 예시입니다.
+
+```text
+$naver-series-workflow
+
+로그인된 네이버 크리에이터 어드바이저에서 오늘을 제외한
+최근 완료 7일 데이터를 직전 7일과 비교해줘.
+
+검색 유입 데이터는 내 블로그에 적합한 글 주제와 키워드를 찾는 데 사용하고,
+메인 유입 콘텐츠는 원문을 복사하지 말고 제목 구조와 호기심 패턴만 분석해줘.
+키워드 10개와 키워드별 대표 추천 제목 1개를 먼저 만들고,
+적합도·근거 충분성·중복 위험을 검토해 상위 3개를 선택해줘.
+
+선택한 주제로 서로 독립적인 정보성 글 3편을 작성해줘.
+저장된 문체 프로필이 있으면 적용하고, 없으면 범용 정보성 문체를 사용해줘.
+
+작성 조건:
+- 제목과 본문이 해결하는 질문을 일치시키기
+- 확인되지 않은 경험·수치·가격·일정은 만들지 않기
+- 사실·의견·추천·변동 가능 정보를 구분하기
+- 모바일에서 읽기 쉬운 짧은 문단과 소제목 사용하기
+- 태그는 #과 공백을 포함해 100자 이내로 만들기
+- 글마다 정보 가치가 있는 이미지 5장의 위치를 먼저 설계하기
+- 최종 원고를 기준으로 이미지를 생성·시각 QA하고 승인 파일만 사용하기
+
+세 글을 naver-post/v1으로 변환하고 사전검증과 콘텐츠 검수를 완료한 뒤,
+아래 SmartEditor에 한 편씩 순차 입력해 임시저장해줘.
+
+대상 SmartEditor:
+[https://blog.naver.com/블로그아이디?Redirect=Write&categoryNo=카테고리번호]
+
+SmartEditor 규칙:
+- H2 소제목은 인용구 3 말풍선형으로 적용하기
+- 핵심 요약과 마무리 라벨은 인용구 2 라인형으로 적용하기
+- 이미지 5장이 정본에 지정된 위치와 순서대로 들어갔는지 확인하기
+- 굵게 강조와 태그가 정본과 일치하는지 확인하기
+- 각 글은 임시저장 완료 메시지를 확인한 뒤 저장된 초안을 다시 열어 검증하기
+- 새 글쓰기 빈 화면을 확인한 뒤에만 다음 글로 진행하기
+- 기존 글과 기존 임시저장 글은 삭제하지 않기
+- 공개 발행과 예약 발행은 절대 하지 않기
+
+마지막에는 키워드 선정 결과, 선택한 제목 3개,
+글별 임시저장 확인 여부와 재열기 검증 결과만 요약해줘.
+```
+
+이 프롬프트를 실행하면 다음 순서로 동작합니다.
+
+1. 최근 7일과 직전 7일의 검색 유입을 읽기 전용으로 비교합니다.
+2. 메인 유입 제목에서는 문구가 아니라 구조만 추출합니다.
+3. 키워드 10개와 대표 제목을 만들고 상위 3개를 선택합니다.
+4. 글 3편을 작성하고 질문 해결·구체성·태그·사실성·중복을 검사합니다.
+5. 최종 원고에서 이미지 슬롯을 정하고 글마다 이미지 5장을 생성·검수합니다.
+6. 원고와 승인 이미지를 `naver-post/v1` 정본으로 변환해 사전검증합니다.
+7. SmartEditor에 첫 글과 이미지를 입력하고 임시저장한 뒤 다시 열어 확인합니다.
+8. 빈 편집기를 확인한 후 같은 절차로 다음 글을 진행하고 공개 발행 없이 종료합니다.
+
+> 키워드 탐색부터 원고 준비까지 연결하려면 `naver-creator-keyword-recommender` → `naver-title` → `seo-series-writer` → `naver-series-workflow` 순서로 사용할 수 있습니다. 필요한 단계만 독립적으로 호출해도 됩니다.
+
 <details>
 <summary><strong>예시 1 — 저장된 프로필로 새 글 작성</strong></summary>
 
@@ -345,6 +528,98 @@ QA를 통과한 이미지만 manifest를 이용해 원고에 삽입해줘.
 
 </details>
 
+<a id="naver-creator-keyword-recommender"></a>
+
+## 📈 크리에이터 어드바이저 키워드 추천 스킬
+
+[`skills/naver-creator-keyword-recommender`](./skills/naver-creator-keyword-recommender/)는 로그인된 네이버 크리에이터 어드바이저의 데이터를 읽기 전용으로 확인해 **이번 주에 쓸 주제와 키워드별 대표 제목**을 추천하는 상류 스킬입니다. 사용자가 명시하면 네이버 블로그 홈의 주요 피드 제목도 별도로 관찰해 원문이 아닌 구조만 보완합니다.
+
+- `검색 유입 트렌드`: 무엇을 쓸지 정하는 키워드 근거
+- `메인 유입 트렌드`: 인용·숫자·질문·반전·정보 공백 같은 제목 구조 근거
+- `블로그 홈 1~10페이지`: 요청했을 때만 사용하는 현재 홈 피드 제목 구조 보완 신호
+- 기본 추천 기간: 오늘을 제외한 완료된 최근 7일
+- 비교 기간: 그보다 앞선 7일
+
+메인 유입과 블로그 홈 제목은 검색 키워드로 섞거나 복사하지 않습니다. 블로그 홈 표본은 검색량·CTR·공식 인기 순위가 아니며, 화면의 `new`, 숫자, `-`도 의미를 확인하지 않은 상태에서 검색량이라고 해석하지 않습니다.
+
+```text
+$naver-creator-keyword-recommender
+최근 완료된 7일 데이터를 직전 7일과 비교해서
+내 블로그 주제와 관련된 키워드 10개와
+키워드별 대표 제목 1개를 추천해줘.
+본문·이미지·SmartEditor 작업은 하지 마.
+```
+
+### 결과에서 확인할 수 있는 항목
+
+| 항목 | 의미 |
+|---|---|
+| 수집 상태 | 최근·직전 기간, 완료·부분 수집 여부, 누락 날짜 |
+| 추천 키워드 | 검색 유입에서 반복성·최근성·기간 차이를 근거로 선정한 글 주제 |
+| 관찰 근거 | 검색량이 아니라 해당 기간의 유입 목록에서 확인된 날짜와 출처 |
+| 추세 분류 | `지속 관찰`, `상승 가능성`, `신규 관심 가능성` 등 근거 수준에 맞춘 표현 |
+| 대표 추천 제목 | 검색 의도와 제목 패턴을 결합해 새로 작성한 제목 1개 |
+| 위험도·주의사항 | 시의성, 의료·금융·법률·평판 위험, 추가 사실 확인 필요 여부 |
+
+대표 제목은 기본적으로 핵심 키워드를 앞부분에 배치하고 질문형·방법형·비교형·정보 공백형 중 주제에 맞는 구조를 선택합니다. 메인 유입에서 인용문이나 숫자가 자주 보여도 근거가 없으면 사용하지 않으며, 블로그 홈에서 발견한 새로운 단어를 추천 키워드로 승격하지 않습니다.
+
+다음은 블로그 홈 패턴까지 함께 사용하는 대표 요청입니다.
+
+```text
+$naver-creator-keyword-recommender
+
+최근 완료된 7일 검색 유입을 직전 7일과 비교해
+내 블로그에 맞는 키워드 10개를 추천해줘.
+
+네이버 블로그 홈 1~10페이지는 제목 원문을 복사하지 말고
+제목 패턴만 분석해 각 키워드의 대표 제목에 반영해줘.
+
+본문·이미지·SmartEditor 작업은 하지 마.
+```
+
+실행 흐름은 다음과 같습니다.
+
+```mermaid
+flowchart LR
+    A["로그인·대상 블로그 확인"] --> B["D-1~D-14 읽기 전용 관찰"]
+    B --> C["검색 키워드와 메인 제목 분리"]
+    C --> D["중복 제거·최근 7일 비교"]
+    D --> X{"블로그 홈 분석을 요청했는가?"}
+    X -- "예" --> Y["홈 1~10페이지 제목 구조 별도 집계"]
+    X -- "아니오" --> E["주제 적합도·민감도 검토"]
+    Y --> E
+    E --> F["키워드별 제목 패킷 생성"]
+    F --> G["naver-title 규칙으로 대표 제목 검수"]
+    G --> H["키워드 10개+대표 제목 출력"]
+    H --> I{"본문 등 후속 작업을 명시했는가?"}
+    I -- "아니오" --> J["제목 추천에서 종료"]
+    I -- "예" --> K["기존 작성·이미지·SmartEditor 스킬 연결"]
+```
+
+브라우저 로그인 만료, CAPTCHA, 대상 블로그 불일치, 서비스 오류는 우회하지 않습니다. 일부 날짜·화면·홈 페이지만 관찰했으면 `partial`로 표시하고, 비교 자료가 부족하면 상승 키워드로 확정하지 않습니다. 원시 스냅샷, 홈 제목 원문과 개인화 세그먼트는 Git 제외 경로에 보관합니다.
+
+블로그 홈 제목 구조만 보고 싶다면 다음처럼 요청할 수 있습니다. 이 모드에서는 키워드나 추천 제목을 만들지 않습니다.
+
+```text
+$naver-creator-keyword-recommender
+네이버 블로그 홈 1~10페이지의 주요 피드 제목을 확인해
+질문·숫자·비교·방법·후기 패턴과 위험 신호만 집계해줘.
+원문 제목, 키워드, 본문은 출력하지 마.
+```
+
+기본 결과에는 키워드별 대표 제목 1개가 함께 포함됩니다. 제목을 여러 개씩 더 받으려면 다음처럼 요청합니다.
+
+```text
+추천 결과 중 2번을 선택할게.
+검색형·홈판형·혼합형 제목 후보를 3개씩 만들어줘.
+메인 유입 제목은 원문을 복사하지 말고 관찰된 구조만 참고해줘.
+본문은 작성하지 마.
+```
+
+`키워드만`, `제목도 제외`를 명시하면 대표 제목을 생성하지 않습니다. 반면 `본문이나 글은 아직 작성하지 마`는 제목 생성을 막지 않고 본문만 비활성화합니다.
+
+본문·이미지·SmartEditor 임시저장까지 한 번에 요청할 수도 있지만, 이때도 각 전용 스킬의 검수와 권한 경계를 그대로 적용합니다. 스킬 호출만으로 공개·예약 발행하지 않습니다.
+
 ## 🏷️ 제목 최적화 스킬
 
 [`skills/naver-title`](./skills/naver-title/)은 주제어나 기존 제목을 받아 네이버 검색형·홈판형·혼합형 제목 후보를 만드는 독립 스킬입니다. 제목과 본문의 일치, 근거 없는 수치·경험, 키워드 반복, 클릭베이트 위험도 함께 검수합니다.
@@ -371,6 +646,7 @@ QA를 통과한 이미지만 manifest를 이용해 원고에 삽입해줘.
 | 스킬 | 담당 역할 |
 |---|---|
 | `naver-blog-style` | 개인 문체 인터뷰·적용, 명시적 요청 시 이미지 구성 |
+| `naver-creator-keyword-recommender` | 최근 유입 데이터 비교·주제 후보·키워드별 대표 제목 추천 |
 | `naver-title` | 네이버 검색형·홈판형·혼합형 제목 |
 | `seo-series-writer` | 정보성 시리즈 기획·본문·이어쓰기·검수 |
 | `naver-smarteditor-drafter` | 완성 원고 검증·SmartEditor 순차 입력·임시저장 |
@@ -424,7 +700,7 @@ python3.11 skills/naver-smarteditor-drafter/scripts/build_naver_post.py \
   --expected-images 5 --expected-tags 6 --check
 ```
 
-H2 소제목은 기본적으로 SmartEditor의 `인용구 3` 말풍선형으로, `핵심 요약`은 `인용구 2` 라인형으로 매핑합니다. 이미지 위치는 Markdown의 이미지 블록 순서가 정본입니다. 전체 파일 검증은 일괄 수행할 수 있지만 브라우저 작성은 회차별 임시저장과 다음 빈 편집기 확인이 끝난 뒤에만 진행합니다.
+H2 소제목은 기본적으로 SmartEditor의 `인용구 3` 말풍선형으로, `핵심 요약`은 `인용구 2` 라인형으로 매핑합니다. 이미지 위치는 Markdown의 이미지 블록 순서가 정본입니다. 이미지가 필수인 요청에서는 요구한 모든 이미지 파일의 생성·시각 QA·해시 검증이 끝나기 전 SmartEditor 입력을 시작하지 않습니다. 전체 파일 검증은 일괄 수행할 수 있지만 브라우저 작성은 회차별 임시저장과 다음 빈 편집기 확인이 끝난 뒤에만 진행합니다.
 
 > [!IMPORTANT]
 > 기존 편집 내용을 자동 삭제하거나 여러 글을 동시에 작성하지 않습니다. 이미지·저장·빈 화면 검증이 실패하면 다음 회차를 중단합니다. 공개 발행과 예약 발행은 이 스킬의 범위가 아닙니다.
@@ -439,6 +715,7 @@ H2 소제목은 기본적으로 SmartEditor의 `인용구 3` 말풍선형으로,
 
 | 하고 싶은 일 | 사용할 스킬 |
 |---|---|
+| 크리에이터 어드바이저에서 최근 주제 후보 찾기 | `$naver-creator-keyword-recommender` |
 | 주제만 가지고 시리즈 목차와 원고 작성 | `$seo-series-writer` |
 | 기존 원고 제목 후보만 생성 | `$naver-title` |
 | 완성된 단일 원고를 네이버용으로 검사·임시저장 | `$naver-smarteditor-drafter` |
@@ -603,6 +880,7 @@ python3.11 skills/naver-series-workflow/scripts/prepare_series.py status \
 
 ### 책임 범위
 
+- `naver-creator-keyword-recommender`는 주제 후보와 키워드별 대표 제목을 제공하지만 원고·브라우저 편집을 대신하지 않습니다.
 - `seo-series-writer`는 원고를 작성하지만 SmartEditor를 조작하지 않습니다.
 - 이미지 생성은 사용자가 명시적으로 요청했을 때 별도 이미지 도구로 수행합니다.
 - `naver-smarteditor-drafter`는 완성된 원고와 실제 이미지 파일만 입력합니다.
@@ -635,8 +913,25 @@ python3.11 skills/naver-series-workflow/scripts/prepare_series.py status \
 │   ├── 🧪 test_series_simulation.py
 │   ├── 🧪 test_ui_evidence_contract.py
 │   ├── 🧪 test_smarteditor_checks.mjs
+│   ├── 🧪 test_creator_keyword_recommender.py
+│   ├── 🧪 test_blog_home_title_analyzer.py
 │   └── 📁 fixtures
 ├── 📁 skills
+│   ├── 📁 naver-creator-keyword-recommender
+│   │   ├── 🧠 SKILL.md
+│   │   ├── 📁 agents
+│   │   │   └── ⚙️ openai.yaml
+│   │   ├── 📁 scripts
+│   │   │   ├── 📊 analyze_snapshots.py
+│   │   │   └── 📊 analyze_home_titles.py
+│   │   └── 📁 references
+│   │       ├── 🧾 data-contract.md
+│   │       ├── 🧾 blog-home-data-contract.md
+│   │       ├── 🖥️ browser-runbook.md
+│   │       ├── 🖥️ blog-home-browser-runbook.md
+│   │       ├── 🛡️ scoring-and-safety.md
+│   │       ├── 🏷️ title-handoff.md
+│   │       └── 📚 examples.md
 │   ├── 📁 naver-title
 │   │   ├── 🧠 SKILL.md
 │   │   ├── 📁 agents
@@ -691,6 +986,9 @@ python3.11 skills/naver-series-workflow/scripts/prepare_series.py status \
 | [`references/image-slot-manifest.md`](./references/image-slot-manifest.md) | JSON v1 슬롯 계약, 마커 문법, 검증 실패 조건 |
 | [`scripts/insert_article_images.py`](./scripts/insert_article_images.py) | 승인된 이미지를 Markdown 슬롯에 삽입하는 비파괴 CLI |
 | [`tests/test_insert_article_images.py`](./tests/test_insert_article_images.py) | 경로·슬롯·특수문자·비덮어쓰기 단위 테스트 |
+| [`skills/naver-creator-keyword-recommender/`](./skills/naver-creator-keyword-recommender/) | 최근·직전 검색 유입을 비교하고 요청 시 블로그 홈 제목 구조를 별도로 보완하는 독립 스킬 |
+| [`skills/naver-creator-keyword-recommender/scripts/analyze_snapshots.py`](./skills/naver-creator-keyword-recommender/scripts/analyze_snapshots.py) | 로컬 관찰 JSON을 검증하고 근거 점수·제목 패턴 집계를 생성하는 결정적 CLI |
+| [`skills/naver-creator-keyword-recommender/scripts/analyze_home_titles.py`](./skills/naver-creator-keyword-recommender/scripts/analyze_home_titles.py) | 블로그 홈 제목 스냅샷을 검증하고 원문 없는 구조·길이·민감도 집계를 생성하는 결정적 CLI |
 | [`skills/naver-title/`](./skills/naver-title/) | 검색형·홈판형·혼합형 제목을 생성하고 사실성·키워드 남용·클릭베이트를 검수하는 독립 스킬 |
 | [`skills/seo-series-writer/`](./skills/seo-series-writer/) | 니치 선정·시리즈 목차·문제 해결형 원고·회차 이어쓰기·사실성 검수의 독립 스킬 |
 | [`skills/naver-smarteditor-drafter/`](./skills/naver-smarteditor-drafter/) | 완성 원고를 검증하고 SmartEditor에 순차 입력·임시저장하는 독립 스킬 |
@@ -699,7 +997,7 @@ python3.11 skills/naver-series-workflow/scripts/prepare_series.py status \
 | [`skills/naver-smarteditor-drafter/scripts/smarteditor_checks.mjs`](./skills/naver-smarteditor-drafter/scripts/smarteditor_checks.mjs) | 기대 정본과 실제 SmartEditor 관찰값을 비교하는 검사기 |
 | [`skills/naver-series-workflow/`](./skills/naver-series-workflow/) | 시리즈 원고·이미지 준비, 검수 게이트, SmartEditor 순차 임시저장·재개를 연결하는 총괄 스킬 |
 | [`skills/naver-series-workflow/scripts/prepare_series.py`](./skills/naver-series-workflow/scripts/prepare_series.py) | `naver-series/v1` manifest를 검사하고 불변 준비 run과 상태 보고서를 만드는 CLI |
-| [`.gitignore`](./.gitignore) | `.DS_Store`와 로컬 이미지 `assets/`를 버전 관리에서 제외 |
+| [`.gitignore`](./.gitignore) | `.DS_Store`, 로컬 이미지와 비공개 크리에이터 어드바이저 관찰 데이터를 버전 관리에서 제외 |
 | `assets/` | 생성한 대표 이미지와 본문 이미지를 로컬에서 보관하는 폴더 |
 
 ## 🧪 프로필 적용 품질 점검

@@ -2,3 +2,5 @@
 assets/
 __pycache__/
 *.pyc
+.creator-advisor-private/
+outputs/creator-advisor-private/

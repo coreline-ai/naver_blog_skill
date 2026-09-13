@@ -22,7 +22,16 @@ from build_naver_post import build_post, preflight_report, content_revision, saf
 from asset_integrity import verify_asset
 from execution_state import ExecutionKey, ExecutionStore
 
-REVIEW_CHECKS = {'factuality', 'originality', 'image_relevance', 'editorial_boundary'}
+REVIEW_CHECKS = {
+    'question_resolution',
+    'practical_specificity',
+    'factuality',
+    'source_integrity',
+    'originality',
+    'title_body_match',
+    'image_relevance',
+    'editorial_boundary',
+}
 SHA = re.compile(r'[a-f0-9]{64}')
 
 
@@ -68,9 +77,20 @@ def load_manifest(path: Path, root: Path) -> dict:
         require_int(ep, 'requested episode', minimum=1)
     if len(set(requested)) != len(requested):
         raise BuildError('duplicate requested episode', 'DUPLICATE_EPISODE')
-    req = fields(data['requirements'], set(), {'images_per_episode', 'tag_line_max_chars'}, 'requirements')
+    req = fields(data['requirements'], set(), {'visual_mode', 'images_per_episode', 'tag_line_max_chars'}, 'requirements')
+    visual_mode = req.get('visual_mode')
+    if visual_mode is not None and visual_mode not in ('required', 'optional', 'none'):
+        raise BuildError('visual_mode must be required, optional, or none', 'INVALID_CONTRACT')
     if 'images_per_episode' in req:
         require_int(req['images_per_episode'], 'images_per_episode')
+        if visual_mode is None:
+            visual_mode = 'required'
+    if visual_mode is None:
+        visual_mode = 'optional'
+    if visual_mode == 'required' and ('images_per_episode' not in req or req['images_per_episode'] < 1):
+        raise BuildError('required visuals need a positive images_per_episode', 'INVALID_CONTRACT')
+    if visual_mode == 'none' and req.get('images_per_episode') not in (None, 0):
+        raise BuildError('visual_mode none conflicts with images_per_episode', 'INVALID_CONTRACT')
     limit = require_int(req.get('tag_line_max_chars', 100), 'tag_line_max_chars')
     if limit > 100:
         raise BuildError('tag_line_max_chars may tighten but not exceed 100', 'INVALID_CONTRACT')
@@ -93,7 +113,11 @@ def load_manifest(path: Path, root: Path) -> dict:
         articles.add(normalized['article'])
         entries.append(normalized)
     return {**data, 'requested_episodes': sorted(requested), 'original_request': list(requested),
-            'requirements': {'images_per_episode': req.get('images_per_episode'), 'tag_line_max_chars': limit},
+            'requirements': {
+                'visual_mode': visual_mode,
+                'images_per_episode': 0 if visual_mode == 'none' else req.get('images_per_episode'),
+                'tag_line_max_chars': limit,
+            },
             'episodes': entries}
 
 

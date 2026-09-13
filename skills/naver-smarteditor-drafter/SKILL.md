@@ -32,6 +32,7 @@ python3.11 -B /absolute/path/to/naver-smarteditor-drafter/scripts/build_naver_po
 
 - 사용자가 지정한 블로그·범위와 완료된 본문/콘텐츠 검수 근거.
 - 현재 정본, preflight, asset-integrity 및 완료 manifest의 무결성 확인.
+- 상위 manifest가 `visual_mode: required`이면 요구 이미지 수·승인 슬롯·로컬 파일·해시가 모두 확인된 정본. 이미지 0개 또는 슬롯 pending 상태로는 UI를 시작하지 않는다.
 - 별도 실행 저장소와 기존 저장 이력/버전 대조.
 - 현재 지원 브라우저 도구의 문서·로그인·입력/업로드/관찰 기능.
 
@@ -40,7 +41,7 @@ python3.11 -B /absolute/path/to/naver-smarteditor-drafter/scripts/build_naver_po
 ## 필수 입력·저장 경계
 
 1. 모든 본문·미디어·복구 대기 UI까지 빈 화면을 확인한다.
-2. render_plan steps 순서대로 처리하고 이미지 지점에서만 해당 로컬 파일을 업로드한다. 업로드 직전 이미지 해시를 재확인한다.
+2. render_plan steps 순서대로 처리하고 이미지 지점에서만 해당 로컬 파일을 업로드한다. 업로드 직전 이미지 해시를 재확인한다. 이미지가 필수인 요청은 본문만 먼저 저장한 뒤 나중에 이미지를 보충하는 방식으로 진행하지 않는다.
 3. H2는 말풍선형, 핵심 요약은 제목 라벨의 라인형 인용구. 이미 적용된 인용구를 반복 변환하지 않는다. 원 selector의 유일성과 선택된 전체 문단을 확인한다.
 4. 표·목록·H3·인라인 code의 대체 서식을 기록하고 bold·본문 의미와 순서를 검증한다. 태그 설정 진입과 최종 공개 발행을 엄격히 구분한다.
 5. 제목·전체 본문·서식·이미지 위치·태그를 대조한 뒤 임시저장한다. save_acknowledged와 reopened_verified를 구분한다.
