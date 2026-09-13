@@ -237,6 +237,32 @@ class SeriesPreparationTests(unittest.TestCase):
                 result=self.run_prepare(check=True)
                 self.assertEqual(result['episodes'][0]['status'],'review_pending' if count==5 else 'assets_pending')
                 self.assertEqual(result['totals']['images'],count)
+    def test_required_visual_mode_needs_positive_count(self):
+        for count in (None, 0):
+            with self.subTest(count=count):
+                self.data['requirements']={'visual_mode':'required','tag_line_max_chars':100}
+                if count is not None:self.data['requirements']['images_per_episode']=count
+                self.save_manifest();self.error('INVALID_CONTRACT')
+    def test_images_per_episode_infers_required_visual_mode(self):
+        self.save_manifest();report=self.run_prepare(check=True)
+        self.assertEqual(report['requirements']['visual_mode'],'required')
+        self.assertEqual(report['requirements']['images_per_episode'],1)
+    def test_none_visual_mode_rejects_nonzero_count_and_existing_image(self):
+        self.data['requirements']={'visual_mode':'none','images_per_episode':1,'tag_line_max_chars':100};self.save_manifest()
+        self.error('INVALID_CONTRACT')
+        self.data['requirements']={'visual_mode':'none','tag_line_max_chars':100};self.save_manifest()
+        report=self.run_prepare(check=True)
+        self.assertEqual(report['requirements']['images_per_episode'],0)
+        self.assertEqual(report['episodes'][0]['status'],'assets_pending')
+    def test_optional_visual_mode_allows_zero_but_checks_supplied_images(self):
+        folder=self.inputs/'episode-03'
+        self.data['requirements']={'visual_mode':'optional','tag_line_max_chars':100};self.save_manifest()
+        (folder/'article.md').write_text('# 제목\n\n본문입니다.\n\n**태그**\n\n#정보\n')
+        report=self.run_prepare(check=True)
+        self.assertEqual(report['episodes'][0]['status'],'review_pending')
+        (folder/'article.md').write_text('# 제목\n\n본문입니다.\n\n![사진](missing.png)\n')
+        report=self.run_prepare(check=True)
+        self.assertEqual(report['episodes'][0]['status'],'assets_pending')
     def test_coherently_rehashed_report_cannot_hide_missing_requested_episode(self):
         self.approve();self.run_prepare();directory=self.outputs/'run'
         report_path=directory/'series-report.json';report=json.loads(report_path.read_text())

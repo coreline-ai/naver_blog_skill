@@ -1,0 +1,4 @@
+interface:
+  display_name: "네이버 크리에이터 키워드 추천"
+  short_description: "최근 유입과 선택적 홈 패턴으로 키워드·제목 추천"
+  default_prompt: "$naver-creator-keyword-recommender 최근 완료 7일을 직전 7일과 비교해 내 블로그에 맞는 키워드 10개와 키워드별 대표 제목 1개를 추천해줘. 본문·이미지·SmartEditor 작업은 하지 마."
