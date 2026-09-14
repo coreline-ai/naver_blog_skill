@@ -61,7 +61,7 @@
 | 제목, 강조, CTA 규칙 | 최신 정보와 발행 시점 |
 
 > [!IMPORTANT]
-> 이 프로젝트는 검색 순위나 홈피드 노출을 보장하지 않습니다. 고정 글자 수, 이미지 수, 해시태그 수 또는 알고리즘 편법을 만들어내지 않고, 원본 경험·주제 일관성·가독성·투명성을 우선합니다.
+> 이 프로젝트는 검색 순위나 홈피드 노출을 보장하지 않습니다. 완성형 시리즈에는 얇은 초안을 막기 위한 본문 3,000자·이미지 포함 시 최소 3장이라는 제작 하한이 있지만 이를 SEO·승인 공식으로 주장하지 않습니다. 키워드 밀도·해시태그 수·알고리즘 편법 대신 원본 경험·주제 일관성·가독성·투명성을 우선합니다.
 
 ## ✨ 핵심 기능
 
@@ -252,7 +252,7 @@ Visual Composer는 사용자가 대표 이미지, 본문 이미지, 이미지 �
 | 감정·관점·변화·추상적인 메시지 | `stylized-concept` |
 | 비운영 목적의 일반 인터페이스 개념 | `ui-mockup` |
 
-이미지 수는 고정하지 않습니다. 모든 소제목을 채우기보다 독자가 상황을 이해하기 어렵거나 정보 구조가 크게 바뀌는 지점만 선택합니다.
+일반 이미지 구성은 수량을 SEO 공식으로 고정하지 않습니다. 다만 `naver-series/v2` 이미지 포함 완성형은 표지만 있는 패키지를 막기 위해 대표 1장과 본문 2장, 총 최소 3장을 제작 하한으로 사용합니다. 모든 소제목을 채우기보다 독자가 상황을 이해하기 어렵거나 정보 구조가 크게 바뀌는 지점을 선택합니다.
 
 ### 출력 구조
 
@@ -372,7 +372,11 @@ $seo-series-writer
 
 조건:
 - 각 편은 서로 다른 검색 의도와 문제를 해결하기
+- 완성형 게시 본문은 제목·태그·참고 URL·이미지 정보를 제외하고 3,000자 이상 작성하기
+- 별도 지정이 없으면 전문가형을 중심으로 친숙하게 설명하기
 - 근거 없는 체험·실험·수치를 만들지 않기
+- 계산·진단표·비교표·절차·체크리스트 중 주제에 맞는 실용 자료를 포함하기
+- 적용 한계와 예외 조건을 설명하기
 - 핵심 요약과 다음 편 예고를 포함하기
 - 이미지 생성과 게시 작업은 하지 않기
 ```
@@ -401,10 +405,12 @@ $naver-series-workflow
 네이버 블로그용 실행 패키지를 prepare 모드로 준비해줘.
 
 조건:
-- 회차별 원고·이미지·태그·naver-post/v1을 검증하기
-- 각 편에 이미지 [원하는 개수]장을 사용하기
+- 신규 완성형은 naver-series/v2로 준비하기
+- 회차별 게시 본문 3,000자, 작성 프로필, 이미지, 태그, naver-post/v1 정본을 검증하기
+- 이미지 포함 요청이면 각 편에 대표 1장과 본문 2장 이상, 총 최소 3장을 사용하기
+- 전문가형에서 이미지 수를 지정하지 않으면 목표 5장으로 준비하기
 - 태그는 #과 공백을 포함해 100자 이내로 검사하기
-- 상태 파일과 다음 실행 지점을 생성하기
+- 구조·길이·편집·시각·입력 준비 상태와 다음 실행 지점을 분리해 생성하기
 - 이번 요청에서는 SmartEditor 입력과 발행을 하지 않기
 ```
 
@@ -428,8 +434,11 @@ $naver-series-workflow
 
 작성 조건:
 - 제목과 본문이 해결하는 질문을 일치시키기
+- 게시 본문은 제외 영역을 빼고 3,000자 이상 작성하기
+- 전문가형을 primary, 친숙한 설명형을 secondary로 적용하기
 - 확인되지 않은 경험·수치·가격·일정은 만들지 않기
 - 사실·의견·추천·변동 가능 정보를 구분하기
+- 조건부 예제, 실전 절차, 진단·비교 도구, 적용 한계를 포함하기
 - 모바일에서 읽기 쉬운 짧은 문단과 소제목 사용하기
 - 태그는 #과 공백을 포함해 100자 이내로 만들기
 - 글마다 정보 가치가 있는 이미지 5장의 위치를 먼저 설계하기
@@ -460,7 +469,7 @@ SmartEditor 규칙:
 1. 최근 7일과 직전 7일의 검색 유입을 읽기 전용으로 비교합니다.
 2. 메인 유입 제목에서는 문구가 아니라 구조만 추출합니다.
 3. 키워드 10개와 대표 제목을 만들고 상위 3개를 선택합니다.
-4. 글 3편을 작성하고 질문 해결·구체성·태그·사실성·중복을 검사합니다.
+4. 글 3편을 3,000자 이상으로 작성하고 질문 해결·프로필 적합성·구체성·태그·사실성·중복을 검사합니다.
 5. 최종 원고에서 이미지 슬롯을 정하고 글마다 이미지 5장을 생성·검수합니다.
 6. 원고와 승인 이미지를 `naver-post/v1` 정본으로 변환해 사전검증합니다.
 7. SmartEditor에 첫 글과 이미지를 입력하고 임시저장한 뒤 다시 열어 확인합니다.
@@ -641,7 +650,7 @@ $naver-creator-keyword-recommender
 
 ## 📚 SEO 정보성 시리즈 작성 스킬
 
-[`skills/seo-series-writer`](./skills/seo-series-writer/)는 **니치 선정 → 사용자가 지정한 편수의 기획 → 회차별 원고 작성 → 사실성·중복 검수**를 수행하는 독립 스킬입니다. 특정 사례나 주제에 묶이지 않고 다양한 정보성 분야에 적용하며, Google 검색·AdSense 대비 콘텐츠 품질과 네이버 홈판 제목 전략을 구분합니다.
+[`skills/seo-series-writer`](./skills/seo-series-writer/)는 **니치 선정 → 사용자가 지정한 편수의 기획 → 작성 프로필 선택 → 회차별 완성형 원고 작성 → 사실성·중복 검수**를 수행하는 독립 스킬입니다. 완성형 게시 본문은 제외 영역을 빼고 최소 3,000자로 작성하며 전문가형·스토리형·후기형·친숙한 설명형·문제 해결형·비교 선택형을 지원합니다. 특정 사례나 주제에 묶이지 않고 다양한 정보성 분야에 적용합니다.
 
 | 스킬 | 담당 역할 |
 |---|---|
@@ -652,7 +661,7 @@ $naver-creator-keyword-recommender
 | `naver-smarteditor-drafter` | 완성 원고 검증·SmartEditor 순차 입력·임시저장 |
 | `naver-series-workflow` | 시리즈 원고·이미지 준비부터 SmartEditor 순차 임시저장·재개까지 연결 |
 
-`seo-series-writer`는 기존 문체 프로필을 자동으로 적용하거나 변경하지 않으며 다른 스킬 없이도 독립적으로 사용할 수 있습니다.
+`seo-series-writer`는 다른 스킬 없이 독립적으로 사용할 수 있습니다. 별도 스타일 지정이 없으면 내용 구조는 전문가형, 설명 방식은 친숙한 설명형을 기본으로 사용합니다. 저장된 개인 문체 프로필은 사용자가 적용을 요청한 경우에만 추가합니다.
 
 ### 저장소에서 직접 사용
 
@@ -661,22 +670,23 @@ $naver-creator-keyword-recommender
 ```text
 이 저장소의 skills/seo-series-writer/SKILL.md를 읽고 적용해줘.
 주제 "[작성할 시리즈 주제]"로 [원하는 편수]편 목차와 제1편을 작성해줘.
+완성형 본문은 제외 영역을 빼고 3,000자 이상 작성하고 전문가형+친숙한 설명형을 적용해줘.
 확인되지 않은 체험이나 수치는 만들지 마.
 ```
 
 ### 설치·등록된 환경에서 호출
 
 ```text
-$seo-series-writer 집 안 종이 문서 정리를 주제로
-5편 목차와 제1편을 작성해줘. 법정 보관 기간 설명은 필요 없어.
+$seo-series-writer 생활 속 과학을 주제로 5편 목차와 제1편을 작성해줘.
+전문가형을 중심으로 초보자도 이해하기 쉽게 쓰고 완성형 본문 기준을 적용해줘.
 ```
 
-기본 출력은 **편집자용 시리즈 안내·목차 → 제1편 본문 → 진행 메모**입니다. 원고는 문제와 답·원리·실전 적용·주의점을 다루고, 요약·다음 편 예고·관찰 질문으로 마무리합니다. 편수·목차·문체·이번 작성 범위를 지정하면 그 요청을 우선합니다.
+기본 출력은 **편집자용 시리즈 안내·목차 → 제1편 본문 → 진행 메모**입니다. 원고는 문제와 답·원리·조건부 예제·실전 적용·판단 도구·주의점과 한계를 다루고 요약으로 마무리합니다. 후기형은 실제 경험 근거가 있을 때만 사용합니다. 편수·목차·프로필·이번 작성 범위를 지정하면 그 요청을 우선합니다.
 
 같은 대화에서 `다음 편`, `특정 회차 재작성`, `발행 패키지`, `상태 요약`으로 이어갈 수 있습니다. 발행 패키지는 제목·키워드 후보·메타 설명·슬러그·내부 링크 후보를 본문과 분리해 제공합니다. 새 대화에는 전체 목차와 완료 요약이 필요하며, 시리즈 코드만으로 이전 원고를 기억한다고 주장하지 않습니다.
 
 > [!IMPORTANT]
-> ‘애드센스 승인용’은 콘텐츠 품질을 고려한 작성 의도입니다. 승인·검색 순위·수익을 보장하지 않고, 허구의 체험·실험·출처를 만들지 않습니다. 특정 편수나 글자 수를 승인 공식으로 취급하지 않습니다. 이 스킬은 원고를 작성하며 자동 게시·예약·이미지 생성은 수행하지 않습니다.
+> ‘애드센스 승인용’은 콘텐츠 품질을 고려한 작성 의도입니다. 승인·검색 순위·수익을 보장하지 않고 허구의 체험·실험·출처를 만들지 않습니다. 3,000자는 이 프로젝트의 완성형 제작 하한이지 승인 공식이 아닙니다. 이 스킬은 원고를 작성하며 자동 게시·예약·이미지 생성은 수행하지 않습니다.
 
 <a id="naver-smarteditor-drafter"></a>
 
@@ -709,7 +719,7 @@ H2 소제목은 기본적으로 SmartEditor의 `인용구 3` 말풍선형으로,
 
 ## 🚦 SEO 시리즈 전체 워크플로 사용법
 
-[`skills/naver-series-workflow`](./skills/naver-series-workflow/)는 `seo-series-writer`와 `naver-smarteditor-drafter`를 연결하는 총괄 스킬입니다. 여러 회차의 원고와 이미지를 한 번에 검사할 수 있지만, 실제 SmartEditor 입력은 **항상 한 편씩 순차적으로** 수행합니다.
+[`skills/naver-series-workflow`](./skills/naver-series-workflow/)는 `seo-series-writer`와 `naver-smarteditor-drafter`를 연결하는 총괄 스킬입니다. 신규 완성형은 `naver-series/v2`로 준비하며 게시 본문 3,000자, 작성 프로필, 이미지 포함 시 최소 3장과 역할을 검사합니다. 여러 회차를 한 번에 검사할 수 있지만 실제 SmartEditor 입력은 **항상 한 편씩 순차적으로** 수행합니다.
 
 ### 어떤 스킬을 호출해야 하나요?
 
@@ -735,7 +745,7 @@ H2 소제목은 기본적으로 SmartEditor의 `인용구 3` 말풍선형으로,
 ### 사용 전 준비물
 
 - 작성할 회차 범위 또는 기존 원고 파일 경로
-- 회차별로 사용할 로컬 이미지 파일과 원하는 이미지 수
+- 이미지 포함 시 회차별 로컬 파일 최소 3장. 수량 미지정 전문가형의 목표는 5장입니다.
 - `#`과 공백을 포함한 태그 문자열 제한. 이 프로젝트의 예시는 100자 이내입니다.
 - `draft`/`resume` 실행 시 로그인된 브라우저와 정확한 블로그 글쓰기 URL
 - 공개 발행 여부. 이 워크플로의 기본 범위는 **임시저장까지만**입니다.
@@ -749,7 +759,9 @@ H2 소제목은 기본적으로 SmartEditor의 `인용구 3` 말풍선형으로,
 현재 프로젝트의 [시작 회차]부터 [종료 회차]까지 네이버용으로 준비해줘.
 
 조건:
-- 각 편 이미지 [원하는 개수]장
+- 신규 완성형은 본문 3,000자 이상, 전문가형+친숙한 설명형
+- 이미지 포함 시 대표 1장+본문 2장 이상, 최소 3장
+- 전문가형 이미지 수 미지정 시 목표 5장
 - 태그는 #과 공백을 포함해 100자 이내
 - H2는 말풍선형 인용구
 - 핵심 요약 제목은 라인형 인용구
@@ -763,7 +775,9 @@ H2 소제목은 기본적으로 SmartEditor의 `인용구 3` 말풍선형으로,
 $naver-series-workflow
 
 현재 프로젝트의 [시작 회차]부터 [종료 회차]까지 네이버용으로 준비해줘.
-각 편에는 이미지 [원하는 개수]장을 사용하고 태그는 100자 이내로 검사해줘.
+각 편은 본문 3,000자 이상과 전문가형+친숙한 설명형을 적용하고,
+이미지는 최소 3장으로 준비해줘. 수량을 지정하지 않은 전문가형은 목표 5장을 사용해줘.
+태그는 100자 이내로 검사해줘.
 이번 요청은 prepare 모드로만 실행해줘.
 ```
 
@@ -772,11 +786,11 @@ $naver-series-workflow
 `prepare` 단계에서는 다음 순서로 진행합니다.
 
 1. 사용자가 지정한 시작·종료 회차를 누락과 중복 없이 계산합니다.
-2. 원고 본문, 편집 메모, 검수 자료를 서로 분리합니다.
-3. 각 이미지의 존재 여부·형식·해시·순서를 검사합니다.
-4. Markdown 또는 구조형 JSON을 `naver-post/v1` 정본으로 변환합니다.
-5. 제목·본문·이미지 수·태그 제한·지원 서식을 검사합니다.
-6. 모든 대상 회차가 통과한 경우에만 SmartEditor 실행 대기열을 준비합니다.
+2. 작성 프로필을 확정하고 원고 본문, 편집 메모, 검수 자료를 분리합니다.
+3. 게시 본문 3,000자와 직접 답·실용 자료·예외·근거 연결을 각각 검사합니다.
+4. 이미지 포함 시 대표 1장+본문 2장, 파일 해시·승인·순서를 검사합니다.
+5. Markdown 또는 구조형 JSON을 `naver-post/v1` 정본으로 변환합니다.
+6. 구조·길이·편집·시각 상태를 분리해 보고하고 모두 통과한 경우에만 실행 대기열을 준비합니다.
 
 CLI로 준비하려면 manifest와 입출력 루트를 지정합니다.
 
@@ -876,7 +890,7 @@ python3.11 skills/naver-series-workflow/scripts/prepare_series.py status \
   --execution-root /absolute/path/to/execution-ledger
 ```
 
-상태 보고에서는 `구조 검사 통과`, `콘텐츠 검수 완료`, `준비 완료`, `임시저장 확인`, `재열기 검증`, `최종 빈 화면 확인`을 서로 다른 단계로 표시합니다.
+상태 보고에서는 `구조`, `본문 길이`, `편집 검수`, `시각 검수`, `SmartEditor 입력 준비`, `임시저장`, `재열기`, `최종 빈 화면`을 서로 다른 단계로 표시합니다.
 
 ### 책임 범위
 
@@ -910,6 +924,8 @@ python3.11 skills/naver-series-workflow/scripts/prepare_series.py status \
 │   ├── 🧪 test_asset_integrity.py
 │   ├── 🧪 test_execution_state.py
 │   ├── 🧪 test_prepare_series.py
+│   ├── 🧪 test_prepare_series_v2.py
+│   ├── 🧪 test_content_metrics.py
 │   ├── 🧪 test_series_simulation.py
 │   ├── 🧪 test_ui_evidence_contract.py
 │   ├── 🧪 test_smarteditor_checks.mjs
@@ -946,6 +962,7 @@ python3.11 skills/naver-series-workflow/scripts/prepare_series.py status \
 │   │   │   └── ⚙️ openai.yaml
 │   │   └── 📁 references
 │   │       ├── 🔄 series-workflow.md
+│   │       ├── 🎛️ writing-profiles.md
 │   │       ├── 📝 article-template.md
 │   │       ├── 🛡️ quality-policy.md
 │   │       ├── ✅ evaluation-rubric.md
@@ -969,9 +986,11 @@ python3.11 skills/naver-series-workflow/scripts/prepare_series.py status \
 │       ├── 📁 agents
 │       │   └── ⚙️ openai.yaml
 │       ├── 📁 scripts
-│       │   └── 🔧 prepare_series.py
+│       │   ├── 🔧 prepare_series.py
+│       │   └── 📏 content_metrics.py
 │       └── 📁 references
 │           ├── 🧾 series-contract.md
+│           ├── 🖼️ visual-quality-gate.md
 │           └── 🔄 workflow-runbook.md
 └── 📁 assets                         # 로컬 생성 이미지, Git 추적 제외
 ```
@@ -990,13 +1009,14 @@ python3.11 skills/naver-series-workflow/scripts/prepare_series.py status \
 | [`skills/naver-creator-keyword-recommender/scripts/analyze_snapshots.py`](./skills/naver-creator-keyword-recommender/scripts/analyze_snapshots.py) | 로컬 관찰 JSON을 검증하고 근거 점수·제목 패턴 집계를 생성하는 결정적 CLI |
 | [`skills/naver-creator-keyword-recommender/scripts/analyze_home_titles.py`](./skills/naver-creator-keyword-recommender/scripts/analyze_home_titles.py) | 블로그 홈 제목 스냅샷을 검증하고 원문 없는 구조·길이·민감도 집계를 생성하는 결정적 CLI |
 | [`skills/naver-title/`](./skills/naver-title/) | 검색형·홈판형·혼합형 제목을 생성하고 사실성·키워드 남용·클릭베이트를 검수하는 독립 스킬 |
-| [`skills/seo-series-writer/`](./skills/seo-series-writer/) | 니치 선정·시리즈 목차·문제 해결형 원고·회차 이어쓰기·사실성 검수의 독립 스킬 |
+| [`skills/seo-series-writer/`](./skills/seo-series-writer/) | 니치 선정·시리즈 목차·3,000자 완성형 원고·6개 작성 프로필·사실성 검수의 독립 스킬 |
 | [`skills/naver-smarteditor-drafter/`](./skills/naver-smarteditor-drafter/) | 완성 원고를 검증하고 SmartEditor에 순차 입력·임시저장하는 독립 스킬 |
 | [`skills/naver-smarteditor-drafter/scripts/build_naver_post.py`](./skills/naver-smarteditor-drafter/scripts/build_naver_post.py) | Markdown·구조형 JSON을 `naver-post/v1`과 사전검증 보고서로 변환하는 CLI |
 | [`skills/naver-smarteditor-drafter/scripts/execution_state.py`](./skills/naver-smarteditor-drafter/scripts/execution_state.py) | 회차별 입력·저장·재열기·빈 화면 이벤트와 writer lease를 관리하는 실행 저장소 |
 | [`skills/naver-smarteditor-drafter/scripts/smarteditor_checks.mjs`](./skills/naver-smarteditor-drafter/scripts/smarteditor_checks.mjs) | 기대 정본과 실제 SmartEditor 관찰값을 비교하는 검사기 |
 | [`skills/naver-series-workflow/`](./skills/naver-series-workflow/) | 시리즈 원고·이미지 준비, 검수 게이트, SmartEditor 순차 임시저장·재개를 연결하는 총괄 스킬 |
-| [`skills/naver-series-workflow/scripts/prepare_series.py`](./skills/naver-series-workflow/scripts/prepare_series.py) | `naver-series/v1` manifest를 검사하고 불변 준비 run과 상태 보고서를 만드는 CLI |
+| [`skills/naver-series-workflow/scripts/prepare_series.py`](./skills/naver-series-workflow/scripts/prepare_series.py) | 레거시 v1과 완성형 `naver-series/v2` manifest를 검사하고 불변 준비 run과 분리된 품질 상태를 만드는 CLI |
+| [`skills/naver-series-workflow/scripts/content_metrics.py`](./skills/naver-series-workflow/scripts/content_metrics.py) | 제목·태그·출처·이미지 정보를 제외한 공개 본문 글자 수를 결정적으로 계산하는 모듈 |
 | [`.gitignore`](./.gitignore) | `.DS_Store`, 로컬 이미지와 비공개 크리에이터 어드바이저 관찰 데이터를 버전 관리에서 제외 |
 | `assets/` | 생성한 대표 이미지와 본문 이미지를 로컬에서 보관하는 폴더 |
 

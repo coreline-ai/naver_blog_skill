@@ -1,4 +1,4 @@
 interface:
   display_name: "SEO 정보성 시리즈 작성"
-  short_description: "니치 선정부터 연재 원고 작성과 사실성·회차 중복 검수까지"
-  default_prompt: "$seo-series-writer 홈 에스프레소와 핸드드립을 주제로 15편 목차와 제1편을 작성해줘."
+  short_description: "3,000자 완성형 시리즈를 6가지 정보 구조와 사실성 기준으로 작성"
+  default_prompt: "$seo-series-writer 생활 속 과학을 주제로 10편 목차와 제1편을 작성해줘. 전문가형을 중심으로 초보자도 이해하기 쉽게 쓰고 완성형 본문 기준을 적용해줘."
