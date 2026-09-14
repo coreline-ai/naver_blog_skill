@@ -12,7 +12,7 @@
 
 `naver-series/v2`의 이미지 포함 완성형은 회차마다 승인된 고유 이미지 최소 3장을 요구한다.
 
-1. `cover` 1장: H1 바로 아래에 두고 글의 핵심 상황을 보여준다.
+1. `cover` 1장: H1 바로 아래 첫 콘텐츠 블록에 두고 글의 핵심 상황을 보여준다.
 2. `inline` 2장 이상: 원리·비교·절차·진단·요약 중 서로 다른 정보 역할을 맡는다.
 
 3장은 검색 노출 공식이 아니라 표지만 있는 불완전한 패키지를 완료로 처리하지 않기 위한 제작 하한이다. 이미지 미요청의 `optional`과 명시적 텍스트 전용 `none`에는 이 하한을 적용하지 않는다.
@@ -36,6 +36,7 @@
 - 파일 내용 SHA-256이 같으면 이름과 경로가 달라도 한 장으로 센다.
 - slot 순서는 article marker 순서와 같아야 한다.
 - 첫 slot은 `cover`이고 전체 cover는 정확히 하나여야 한다.
+- cover slot과 결합된 canonical image block은 H1을 제외한 첫 콘텐츠 block이어야 한다. 빈 줄은 무시하지만 도입 문단·소제목·다른 이미지를 먼저 둘 수 없다.
 - inline은 두 개 이상이어야 한다.
 - 한 이미지가 두 개의 서로 다른 정보 역할을 대신한다고 기록하지 않는다.
 - alt는 독자가 놓칠 정보를 설명하고 caption은 인접 문단과의 관계를 설명한다.
@@ -61,6 +62,7 @@
 |---|---|
 | `VISUAL_MINIMUM_NOT_MET` | 승인된 고유 이미지가 최소 수량보다 적음 |
 | `INLINE_IMAGES_MISSING` | cover 1장+inline 2장 역할 계약 불충족 |
+| `COVER_POSITION_INVALID` | cover 역할은 맞지만 canonical post의 첫 콘텐츠 block에 배치되지 않음 |
 | `DUPLICATE_ASSET` | 다른 슬롯에서 동일 이미지 바이트 재사용 |
 | `ASSETS_PENDING` | 슬롯·파일·승인·디코딩 문제로 합성 불가 |
 

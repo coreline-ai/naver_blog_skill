@@ -42,13 +42,17 @@ def _block_text(block: dict[str, Any]) -> list[str]:
     return []
 
 
-def visible_body_text(post: dict[str, Any], *, excluded_texts: list[str] | tuple[str, ...] = ()) -> str:
-    """Return public body text, excluding H1, tags, references, and image metadata."""
-    excluded = {normalize_visible_text(value) for value in excluded_texts if normalize_visible_text(value)}
+def visible_body_text(
+    post: dict[str, Any], *, excluded_block_ids: list[str] | tuple[str, ...] = ()
+) -> str:
+    """Return public body text while excluding explicitly identified metadata blocks."""
+    excluded = set(excluded_block_ids)
     parts: list[str] = []
     in_reference_section = False
     for block in post.get("blocks", []):
         if not isinstance(block, dict):
+            continue
+        if block.get("id") in excluded:
             continue
         if block.get("type") == "heading":
             heading = normalize_visible_text(str(block.get("text", ""))).casefold()
@@ -60,14 +64,18 @@ def visible_body_text(post: dict[str, Any], *, excluded_texts: list[str] | tuple
                 in_reference_section = False
         if in_reference_section:
             continue
-        parts.extend(str(value) for value in _block_text(block) if normalize_visible_text(str(value)) not in excluded)
+        parts.extend(str(value) for value in _block_text(block))
     return normalize_visible_text(" ".join(parts))
 
 
-def body_metrics(post: dict[str, Any], *, excluded_texts: list[str] | tuple[str, ...] = ()) -> dict[str, Any]:
-    text = visible_body_text(post, excluded_texts=excluded_texts)
+def body_metrics(
+    post: dict[str, Any], *, excluded_block_ids: list[str] | tuple[str, ...] = ()
+) -> dict[str, Any]:
+    unique_ids = list(dict.fromkeys(excluded_block_ids))
+    text = visible_body_text(post, excluded_block_ids=unique_ids)
     return {
         "schema": "naver-content-metrics/v1",
         "body_char_count": len(text),
-        "measurement": "NFKC Unicode code points after whitespace collapse; excludes H1, tags, references, URLs, images, alt and captions",
+        "excluded_block_ids": unique_ids,
+        "measurement": "NFKC Unicode code points after whitespace collapse; excludes H1, tags, references, URLs, images, alt and identified caption blocks",
     }

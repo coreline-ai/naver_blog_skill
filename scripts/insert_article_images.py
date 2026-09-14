@@ -266,14 +266,14 @@ def _atomic_write(path: Path, content: str) -> None:
         raise
 
 
-def compose_article_text(
+def compose_article_data(
     article_path: str | Path,
     manifest_path: str | Path,
     *,
     root: str | Path | None = None,
     absolute_image_paths: bool = False,
-) -> tuple[str, int]:
-    """Compose without writing. Absolute links bridge source-relative converters."""
+) -> tuple[str, list[dict[str, str]]]:
+    """Compose without writing and return the validated ordered slot records."""
     project_root = Path.cwd().resolve() if root is None else Path(root).resolve()
     if not project_root.is_dir():
         raise CompositionError(f"Project root does not exist: {project_root}")
@@ -289,7 +289,24 @@ def compose_article_text(
         article_text = article.read_text(encoding="utf-8")
     except OSError as exc:
         raise CompositionError(f"Unable to read article {article}: {exc}") from exc
-    return _compose_text(article_text, slots), len(slots)
+    return _compose_text(article_text, slots), [dict(slot) for slot in slots]
+
+
+def compose_article_text(
+    article_path: str | Path,
+    manifest_path: str | Path,
+    *,
+    root: str | Path | None = None,
+    absolute_image_paths: bool = False,
+) -> tuple[str, int]:
+    """Compose without writing. Absolute links bridge source-relative converters."""
+    text, slots = compose_article_data(
+        article_path,
+        manifest_path,
+        root=root,
+        absolute_image_paths=absolute_image_paths,
+    )
+    return text, len(slots)
 
 
 def compose_article(

@@ -55,7 +55,7 @@ v1은 기존 exact 이미지 수와 자유형 review를 보존한다. `ready`여
 v2 기본값:
 
 - `content_mode=full_article`, `primary_style=expert`, `secondary_style=friendly`, `min_body_chars=3000`.
-- `min_body_chars`는 3,000 미만으로 낮출 수 없다. 제목·태그·참고자료 URL·이미지 marker/alt/caption·편집 메모를 제외하고 NFKC·공백 정규화 후 Unicode code point를 센다.
+- `min_body_chars`는 3,000 미만으로 낮출 수 없다. 제목·태그·참고자료 URL·이미지 marker/alt·편집 메모와 **합성 단계에서 식별된 caption block**을 제외하고 NFKC·공백 정규화 후 Unicode code point를 센다. 캡션과 문장이 같더라도 다른 본문 block은 제외하지 않는다.
 - `visual_mode=required`이면 `min_images_per_episode` 기본 3이다. primary가 expert이면 `target_images_per_episode` 기본 5이며 다른 프로필은 시각 품질 게이트의 목표를 사용한다.
 - 최소 수량은 3 미만으로 낮출 수 없고 target은 minimum보다 작을 수 없다. `optional`은 수량 필드를 허용하지 않고 실제 제공 이미지의 무결성을 검사한다. `none`은 0장만 허용한다.
 - 스타일은 `expert|story|review|friendly|troubleshooting|comparison` 중 서로 다른 두 값이다.
@@ -77,7 +77,9 @@ editorial은 별도 JSON 객체다. 빈 객체도 가능하다. 파일은 있어
 
 선택 필드 `image_slots`는 기존 v1 이미지 슬롯 manifest 경로다. **슬롯 파일 내부** asset_root/path는 기존 도구의 계약대로 `--input-root` 기준 상대 경로다. 시리즈 manifest의 상대 경로 기준과 혼동하지 않는다.
 
-공개 함수 `compose_article_text(..., absolute_image_paths=True)`는 기존 검증·슬롯 순서·approved 상태를 재사용해 절대 이미지 링크를 만들고 텍스트만 반환한다. `build_post(..., markdown_text=...)`가 원래 article 경로를 기준으로 변환한다. 기존 inline 이미지의 source-relative 링크도 유지된다. 원고 폴더나 임시 원고 파일에 쓰지 않는다.
+공개 함수 `compose_article_text(..., absolute_image_paths=True)`는 기존 검증·슬롯 순서·approved 상태를 재사용해 절대 이미지 링크를 만들고 `(text, count)`를 반환한다. 추가 함수 `compose_article_data(...)`는 같은 검증을 한 번만 수행하고 `(text, ordered_slots)`를 반환한다. prepare는 이 정규화된 slot id·role·절대 path·caption을 canonical post의 image block과 순서대로 결합한다. `build_post(..., markdown_text=...)`가 원래 article 경로를 기준으로 변환하며 기존 inline 이미지의 source-relative 링크도 유지된다. 원고 폴더나 임시 원고 파일에 쓰지 않는다.
+
+v2 required에서 첫 slot은 유일한 `cover`여야 할 뿐 아니라, 그 slot과 결합된 image block이 H1을 제외한 canonical post의 첫 콘텐츠 block이어야 한다. 빈 줄은 콘텐츠 block이 아니다. non-empty caption은 해당 이미지 바로 다음 paragraph여야 하며, prepare는 그 paragraph의 block id만 본문 글자 수 제외 대상으로 기록한다. 누락·비인접 caption 또는 slot/image 순서 불일치는 추측해서 복구하지 않는다.
 
 기존 compose_article CLI/함수의 프로젝트 상대 링크 출력과 force 의미는 바꾸지 않는다. 통합 CLI에서는 force로 원고를 덮어쓰지 않는다. 각 이미지는 실제 PNG/JPEG 디코딩·내용 해시 검사를 통과해야 한다. 실제 파일만으로 시각 품질·사실성을 보증하지 않는다.
 
@@ -169,9 +171,11 @@ run-id/
     article-with-images.md       # 슬롯 합성이 있는 경우만
 ```
 
-snapshot.json은 진단 파일을 포함한 해시 목록이다. blocked 스냅샷에도 존재해 결과 무결성을 확인한다. complete.json은 all-ready 스냅샷 해시를 가리킨다. staging·complete 누락·추가 파일·변조·symlink는 ready로 해석하지 않는다.
+snapshot.json은 진단 파일을 포함한 해시 목록이다. blocked 스냅샷에도 존재해 결과의 우발적 변경과 산출물 간 불일치를 감지한다. complete.json은 all-ready 스냅샷 해시를 가리킨다. staging·complete 누락·추가 파일·변조·symlink는 ready로 해석하지 않는다. 이 SHA-256 목록은 전자서명·HMAC·작성자 인증이 아니므로 로컬 쓰기 권한자가 모든 산출물과 해시를 함께 다시 만드는 상황까지 방어한다고 해석하지 않는다.
 
-v2 회차 보고서는 `structure_ready`, `length_ready`, `editorial_ready`, `visual_ready`, `draft_input_ready`, `body_char_count`, `visual_minimum_met`, `visual_target_met`를 분리한다. prepare의 `draft_input_ready`는 SmartEditor 입력 후보라는 뜻이며 `draft_saved`나 `reopen_verified`가 아니다.
+v2 회차 보고서는 `structure_ready`, `length_ready`, `editorial_ready`, `visual_ready`, `draft_input_ready`, `body_char_count`, `visual_minimum_met`, `visual_target_met`를 분리한다. 새 run의 `content-metrics.json`은 제외한 caption block id를, `preflight-report.json`의 `visual_quality.slot_bindings`는 slot과 image/caption block의 결합을 기록한다. prepare와 status는 같은 파생 규칙을 사용하며 report의 상태·오류·글자 수·readiness·queue·totals가 canonical post, asset integrity, content metrics, preflight와 다르면 `CORRUPT_SNAPSHOT`으로 거부한다. prepare의 `draft_input_ready`는 SmartEditor 입력 후보라는 뜻이며 `draft_saved`나 `reopen_verified`가 아니다.
+
+이 필드가 도입되기 전에 생성된 v2 snapshot은 자동 이관하거나 덮어쓰지 않는다. 결합 필드가 없으면 기존 저장 사실의 교차 일관성만 검사하며 새 cover 위치·caption block 재계산을 소급해서 통과했다고 주장하지 않는다. 강화된 검증이 필요하면 원본으로 새 run-id를 준비한다. v1의 `legacy_ungraded` 의미와 기존 snapshot 읽기 규칙은 바꾸지 않는다.
 
 invalid_review에서도 변환 가능 정본과 revision은 남겨 검토할 수 있게 한다. 일반 변환 실패는 해당 회차 오류와 전체 보고서에 남긴다. manifest 자체의 형식·경로·충돌 오류는 쓰기 전 종료한다. 원본의 동시 변경이 발견되면 준비 커밋을 중단한다.
 
@@ -181,7 +185,7 @@ prepare CLI 종료값: 0=전 회차 준비 ready, 1=회차별 대기/누락/실�
 
 주요 상태: ready, missing, content_too_short, review_pending, stale_review, needs_revision, invalid_review, assets_pending, preflight_failed. queue는 전 회차 ready일 때만 존재한다. ui_authorized/ui_executable은 항상 false다. 명시적 사용자 요청과 현재 UI 확인은 별도다.
 
-status는 snapshot·원본 provenance·이미지·정본 revision·검수 기록과 선택된 실행 저장소를 읽는다. 파일·이벤트·잠금을 만들거나 레거시를 자동 이관하지 않는다. 원본 변경은 integrity=failed, queue=[]로 보고한다. pending 패키지의 유효한 진단 조회는 성공 종료할 수 있지만 preparation=blocked는 유지한다.
+status는 snapshot·원본 provenance·이미지·정본 revision·검수 기록과 선택된 실행 저장소를 읽는다. v2의 저장된 readiness 불리언은 단독 근거로 신뢰하지 않고 회차 산출물에서 파생한 값과 일치하는지 확인한다. 파일·이벤트·잠금을 만들거나 레거시를 자동 이관하지 않는다. 원본 변경은 integrity=failed, queue=[]로 보고한다. pending 패키지의 유효한 진단 조회는 성공 종료할 수 있지만 preparation=blocked는 유지한다.
 
 prepared_queue는 검수 통과 회차, remaining_episodes는 미완료 집합이다. queue는 모든 남은 회차가 새 시작 가능한 경우의 순차 후보다. 부분 입력·저장 불확실성에서는 queue=[]이고 next_episode/next_action에 대조할 회차를 표시한다. execution_root/blog 없이는 실행 가능 판정을 하지 않는다.
 

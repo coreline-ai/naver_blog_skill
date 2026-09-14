@@ -47,6 +47,8 @@ For a v2 complete package, select at least three distinct slots: exactly one cov
 
 Place the cover marker immediately after the H1 title. The cover should compress the article's core situation and emotional tone rather than reproduce the entire title as text.
 
+Preparation also verifies the composed canonical post: the bound cover image must be its first content block after H1. Blank lines are ignored, but an introductory paragraph, heading, or other image before the cover fails the v2 visual gate.
+
 ```md
 # 퇴근 후에도 국내 주식 거래가 가능할까요?
 
@@ -139,6 +141,7 @@ For UI instructions, official forms, branded products, or evidence images, use a
 - Captions should explain why the image matters to the adjacent paragraph.
 - Keep factual details in the article body even when they also appear visually.
 - When a photorealistic scene is illustrative rather than documentary, say so in the caption if confusion is plausible.
+- The composer binds each non-empty caption to the paragraph immediately following its image. Only that block id is excluded from v2 body length; identical wording elsewhere remains body text.
 
 ## 10. Compose the article
 
