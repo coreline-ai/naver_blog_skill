@@ -10,7 +10,12 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
 
-from insert_article_images import CompositionError, compose_article  # noqa: E402
+from insert_article_images import (  # noqa: E402
+    CompositionError,
+    compose_article,
+    compose_article_data,
+    compose_article_text,
+)
 
 
 class InsertArticleImagesTests(unittest.TestCase):
@@ -113,6 +118,26 @@ class InsertArticleImagesTests(unittest.TestCase):
             self.output.read_text(encoding="utf-8"),
             "![설명 이미지](<assets/post/01-cover.png>)\n",
         )
+
+    def test_data_api_returns_validated_slots_without_changing_text_api(self) -> None:
+        self.article.write_text("# 제목\n\n<!-- naver-image:cover -->\n", encoding="utf-8")
+        self._write_manifest(
+            [self._slot("cover", "assets/post/01-cover.png", role="cover", caption="캡션")]
+        )
+
+        data_text, slots = compose_article_data(
+            self.article, self.manifest, root=self.root, absolute_image_paths=True
+        )
+        legacy_text, count = compose_article_text(
+            self.article, self.manifest, root=self.root, absolute_image_paths=True
+        )
+
+        self.assertEqual(data_text, legacy_text)
+        self.assertEqual(count, 1)
+        self.assertEqual([slot["id"] for slot in slots], ["cover"])
+        self.assertEqual(slots[0]["role"], "cover")
+        self.assertEqual(slots[0]["caption"], "캡션")
+        self.assertEqual(slots[0]["path"], str((self.assets / "01-cover.png").resolve()))
 
     def test_escapes_korean_alt_and_caption_markdown(self) -> None:
         self.article.write_text("<!-- naver-image:detail -->", encoding="utf-8")

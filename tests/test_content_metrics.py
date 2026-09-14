@@ -26,14 +26,32 @@ class ContentMetricsTests(unittest.TestCase):
 
     def test_excludes_composed_caption_paragraph_when_supplied(self):
         post = self.post([
-            {'type': 'paragraph', 'text': '본문 한 줄'},
-            {'type': 'image', 'alt': '대체텍스트'},
-            {'type': 'paragraph', 'text': '이해를 돕기 위한 생성 이미지입니다.'},
+            {'id': 'b001', 'type': 'paragraph', 'text': '본문 한 줄'},
+            {'id': 'b002', 'type': 'image', 'alt': '대체텍스트'},
+            {'id': 'b003', 'type': 'paragraph', 'text': '이해를 돕기 위한 생성 이미지입니다.'},
         ])
         self.assertEqual(
-            visible_body_text(post, excluded_texts=['이해를 돕기 위한 생성 이미지입니다.']),
+            visible_body_text(post, excluded_block_ids=['b003']),
             '본문 한 줄',
         )
+
+    def test_caption_exclusion_keeps_equal_text_in_other_blocks(self):
+        post = self.post([
+            {'id': 'b001', 'type': 'paragraph', 'text': '같은 문장'},
+            {'id': 'b002', 'type': 'image', 'alt': '대체텍스트'},
+            {'id': 'b003', 'type': 'paragraph', 'text': '같은 문장'},
+        ])
+        self.assertEqual(visible_body_text(post, excluded_block_ids=['b003']), '같은 문장')
+
+    def test_caption_exclusion_uses_identity_not_markdown_text(self):
+        post = self.post([
+            {'id': 'b001', 'type': 'paragraph', 'text': '본문'},
+            {'id': 'b002', 'type': 'image', 'alt': '대체텍스트'},
+            {'id': 'b003', 'type': 'paragraph', 'text': r'A \\ B*와 \\_상황\\_'},
+        ])
+        metrics = body_metrics(post, excluded_block_ids=['b003'])
+        self.assertEqual(metrics['body_char_count'], len('본문'))
+        self.assertEqual(metrics['excluded_block_ids'], ['b003'])
 
     def test_includes_public_headings_lists_tables_and_callouts(self):
         post = self.post([

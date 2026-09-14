@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -63,7 +64,12 @@ class SeriesPreparationV2Tests(unittest.TestCase):
                 'path': f'episode-{ep:02d}/{name}',
                 'status': 'approved',
             })
-        article = '# 제목\n\n' + ('가' * chars) + '\n\n' + '\n\n'.join(markers) + '\n\n**태그**\n\n#정보\n'
+        cover_marker = (markers[0] + '\n\n') if markers else ''
+        inline_markers = '\n\n'.join(markers[1:])
+        article = '# 제목\n\n' + cover_marker + ('가' * chars)
+        if inline_markers:
+            article += '\n\n' + inline_markers
+        article += '\n\n**태그**\n\n#정보\n'
         (folder / 'article.md').write_text(article)
         (folder / 'editorial.json').write_text(workflow.encoded({'series_id': 'fixture-v2', 'episode': ep}))
         (folder / 'slots.json').write_text(workflow.encoded({'version': 1, 'asset_root': f'episode-{ep:02d}', 'slots': slots}))
@@ -99,6 +105,39 @@ class SeriesPreparationV2Tests(unittest.TestCase):
                       'content_revision': item['content_revision'], 'checks': checks,
                       'reviewed_by': 'synthetic-v2-test', 'reviewed_at': '2026-09-13T00:00:00+09:00'}
             (self.inputs / f'episode-{ep:02d}/review.json').write_text(workflow.encoded(review))
+
+    def rehash_snapshot(self, run: Path, *names: str, ready: bool = False):
+        snapshot_path = run / 'snapshot.json'
+        snapshot = json.loads(snapshot_path.read_text())
+        for name in names:
+            snapshot['files'][name] = hashlib.sha256((run / name).read_bytes()).hexdigest()
+        snapshot_path.write_text(workflow.encoded(snapshot))
+        if ready:
+            (run / 'complete.json').write_text(workflow.encoded({
+                'schema': 'naver-series-ready/v2',
+                'snapshot_sha256': hashlib.sha256(snapshot_path.read_bytes()).hexdigest(),
+            }))
+
+    def forge_report_ready(self, run: Path, **episode_updates):
+        report_path = run / 'series-report.json'
+        report = json.loads(report_path.read_text())
+        item = report['episodes'][0]
+        item.update({
+            'status': 'ready',
+            'errors': [],
+            'error_codes': [],
+            'structure_ready': True,
+            'length_ready': True,
+            'editorial_ready': True,
+            'visual_ready': True,
+            'draft_input_ready': True,
+            **episode_updates,
+        })
+        report['status'] = 'ready'
+        report['queue'] = report['requested_episodes']
+        report['totals']['ready'] = len(report['episodes'])
+        report_path.write_text(workflow.encoded(report))
+        self.rehash_snapshot(run, 'series-report.json', ready=True)
 
     def test_v2_defaults_and_pending_readiness_are_explicit(self):
         report = self.prepare(check=True)
@@ -190,6 +229,42 @@ class SeriesPreparationV2Tests(unittest.TestCase):
         self.assertFalse(status['live_complete'])
         self.assertFalse(status['ui_authorized'])
 
+    def test_cover_must_be_first_canonical_content_block(self):
+        marker = '<!-- naver-image:cover -->'
+        for placement in ('after-first-paragraph', 'after-body'):
+            with self.subTest(placement=placement):
+                folder = self.add_episode(1)
+                source = (folder / 'article.md').read_text()
+                prefix = f'# 제목\n\n{marker}\n\n'
+                self.assertTrue(source.startswith(prefix))
+                body_and_tail = source[len(prefix):]
+                if placement == 'after-first-paragraph':
+                    rewritten = f'# 제목\n\n먼저 읽는 문단\n\n{marker}\n\n{body_and_tail}'
+                else:
+                    inline = '\n\n<!-- naver-image:section-1 -->'
+                    body, tail = body_and_tail.split(inline, 1)
+                    rewritten = f'# 제목\n\n{body}\n\n{marker}{inline}{tail}'
+                (folder / 'article.md').write_text(rewritten)
+                self.save()
+
+                item = self.prepare(check=True)['episodes'][0]
+
+                self.assertEqual(item['status'], 'assets_pending')
+                self.assertIn('COVER_POSITION_INVALID', item['error_codes'])
+                self.assertTrue(item['visual_minimum_met'])
+                self.assertFalse(item['visual_ready'])
+
+    def test_valid_cover_binding_is_first_and_persisted(self):
+        self.prepare()
+        preflight = json.loads((self.outputs / 'run/episode-01/preflight-report.json').read_text())
+        metrics = json.loads((self.outputs / 'run/episode-01/content-metrics.json').read_text())
+        visual = preflight['visual_quality']
+
+        self.assertTrue(visual['cover_position_valid'])
+        self.assertEqual(visual['slot_bindings'][0]['role'], 'cover')
+        self.assertEqual(visual['slot_bindings'][0]['image_block_index'], 0)
+        self.assertEqual(metrics['excluded_block_ids'], [])
+
     def test_three_episode_v2_queue_is_all_or_nothing(self):
         self.add_episode(2)
         self.add_episode(3)
@@ -207,7 +282,6 @@ class SeriesPreparationV2Tests(unittest.TestCase):
         self.assertFalse(blocked['episodes'][1]['draft_input_ready'])
 
     def test_v2_rehashed_report_cannot_forge_readiness_flags(self):
-        import hashlib
         self.approve()
         self.prepare()
         run = self.outputs / 'run'
@@ -224,6 +298,123 @@ class SeriesPreparationV2Tests(unittest.TestCase):
             'snapshot_sha256': hashlib.sha256(snapshot_path.read_bytes()).hexdigest()}))
         with self.assertRaises(workflow.BuildError):
             workflow.status(run)
+
+    def test_rehashed_report_cannot_forge_visual_block_to_ready(self):
+        self.add_episode(1, roles=['cover', 'cover', 'cover'])
+        self.save()
+        self.approve()
+        self.prepare()
+        run = self.outputs / 'run'
+
+        self.forge_report_ready(run)
+
+        with self.assertRaises(workflow.BuildError) as raised:
+            workflow.status(run)
+        self.assertEqual(raised.exception.code, 'CORRUPT_SNAPSHOT')
+
+    def test_rehashed_report_cannot_forge_2999_body_to_ready(self):
+        self.add_episode(1, chars=2999)
+        self.save()
+        self.approve()
+        self.prepare()
+        run = self.outputs / 'run'
+
+        self.forge_report_ready(run, body_char_count=3000)
+
+        with self.assertRaises(workflow.BuildError) as raised:
+            workflow.status(run)
+        self.assertEqual(raised.exception.code, 'CORRUPT_SNAPSHOT')
+
+    def test_v2_snapshot_rejects_weakened_stored_requirements(self):
+        self.approve()
+        self.prepare()
+        run = self.outputs / 'run'
+        report_path = run / 'series-report.json'
+        report = json.loads(report_path.read_text())
+        report['requirements']['min_images_per_episode'] = 2
+        report_path.write_text(workflow.encoded(report))
+        self.rehash_snapshot(run, 'series-report.json', ready=True)
+
+        with self.assertRaises(workflow.BuildError) as raised:
+            workflow.status(run)
+        self.assertEqual(raised.exception.code, 'CORRUPT_SNAPSHOT')
+
+    def test_v2_snapshot_rejects_metrics_preflight_mismatch(self):
+        self.approve()
+        self.prepare()
+        run = self.outputs / 'run'
+        metrics_path = run / 'episode-01/content-metrics.json'
+        metrics = json.loads(metrics_path.read_text())
+        metrics['body_char_count'] = 2999
+        metrics_path.write_text(workflow.encoded(metrics))
+        self.rehash_snapshot(run, 'episode-01/content-metrics.json', ready=True)
+
+        with self.assertRaises(workflow.BuildError) as raised:
+            workflow.status(run)
+        self.assertEqual(raised.exception.code, 'CORRUPT_SNAPSHOT')
+
+    def test_caption_bindings_exclude_long_special_caption_only(self):
+        self.add_episode(1, chars=2999)
+        slots_path = self.inputs / 'episode-01/slots.json'
+        slots = json.loads(slots_path.read_text())
+        long_caption = ('긴 캡션 *강조* _표시_ C:\\자료\\사진 ' * 40).strip()
+        duplicate_caption = '정상 본문과 같은 캡션 문장'
+        slots['slots'][0]['caption'] = long_caption
+        slots['slots'][1]['caption'] = duplicate_caption
+        slots_path.write_text(workflow.encoded(slots))
+        self.save()
+
+        without_duplicate = self.prepare(check=True)['episodes'][0]
+        self.assertEqual(without_duplicate['body_char_count'], 2999)
+        self.assertIn('CONTENT_TOO_SHORT', without_duplicate['error_codes'])
+
+        article_path = self.inputs / 'episode-01/article.md'
+        article = article_path.read_text()
+        article_path.write_text(article.replace(
+            '\n\n**태그**', f'\n\n{duplicate_caption}\n\n**태그**', 1
+        ))
+        with_duplicate = self.prepare(check=True)['episodes'][0]
+        self.assertEqual(
+            with_duplicate['body_char_count'],
+            without_duplicate['body_char_count'] + 1 + len(duplicate_caption),
+        )
+
+        self.prepare(run='captions')
+        preflight = json.loads((self.outputs / 'captions/episode-01/preflight-report.json').read_text())
+        metrics = json.loads((self.outputs / 'captions/episode-01/content-metrics.json').read_text())
+        caption_ids = [
+            binding['caption_block_id']
+            for binding in preflight['visual_quality']['slot_bindings']
+            if binding['caption_block_id']
+        ]
+        self.assertEqual(metrics['excluded_block_ids'], caption_ids)
+        self.assertEqual(len(caption_ids), 2)
+
+    def test_v2_snapshot_without_new_binding_fields_remains_readable(self):
+        self.approve()
+        self.prepare()
+        run = self.outputs / 'run'
+        metrics_path = run / 'episode-01/content-metrics.json'
+        preflight_path = run / 'episode-01/preflight-report.json'
+        metrics = json.loads(metrics_path.read_text())
+        preflight = json.loads(preflight_path.read_text())
+        metrics.pop('excluded_block_ids')
+        preflight['content_metrics'] = metrics
+        preflight['visual_quality'].pop('cover_position_valid')
+        preflight['visual_quality'].pop('slot_bindings')
+        metrics_path.write_text(workflow.encoded(metrics))
+        preflight_path.write_text(workflow.encoded(preflight))
+        self.rehash_snapshot(
+            run,
+            'episode-01/content-metrics.json',
+            'episode-01/preflight-report.json',
+            ready=True,
+        )
+
+        status = workflow.status(run)
+
+        self.assertEqual(status['integrity'], 'passed')
+        self.assertEqual(status['preparation'], 'ready')
 
     def test_two_images_fail_and_three_distinct_roles_pass_visual_minimum(self):
         self.add_episode(1, images=2)

@@ -250,15 +250,15 @@ def check_review(review: dict | None, revision: str | None, *, version: int = 1,
     return 'ready', []
 
 
-def compose(source: Path, slots: Path, root: Path) -> str:
+def compose(source: Path, slots: Path, root: Path) -> tuple[str, list[dict[str, str]]]:
     helper = SKILLS.parent / 'scripts/insert_article_images.py'
     if not helper.is_file():
         raise BuildError('image slots require repository scripts/insert_article_images.py; no auto-install', 'DEPENDENCY_MISSING')
     # Import the repository helper, not a second Markdown/image-slot parser.
     sys.path.insert(0, str(helper.parent))
-    from insert_article_images import compose_article_text, CompositionError
+    from insert_article_images import compose_article_data, CompositionError
     try:
-        return compose_article_text(source, slots, root=root, absolute_image_paths=True)[0]
+        return compose_article_data(source, slots, root=root, absolute_image_paths=True)
     except CompositionError as exc:
         raise BuildError(str(exc), 'ASSETS_PENDING') from exc
 
@@ -282,59 +282,168 @@ def validate_v2_editorial(editorial: dict, requirements: dict) -> None:
         raise BuildError('review profile requires user-provided or verified experience evidence', 'EXPERIENCE_BASIS_MISSING')
 
 
-def image_slot_metadata(path: Path | None) -> tuple[list[str], list[str]]:
-    if path is None:
-        return [], []
-    data = load_json_object(path)
-    slots = data.get('slots')
-    if not isinstance(slots, list):
-        return [], []
-    roles = [slot.get('role') for slot in slots if isinstance(slot, dict) and isinstance(slot.get('role'), str)]
-    captions = [slot.get('caption') for slot in slots if isinstance(slot, dict) and isinstance(slot.get('caption'), str)]
-    return roles, captions
+def build_slot_bindings(post: dict, slots: list[dict[str, str]]) -> list[dict[str, Any]]:
+    """Bind validated composition slots to canonical image/caption block identities."""
+    blocks = post['blocks']
+    images = {block['path']: (index, block) for index, block in enumerate(blocks) if block['type'] == 'image'}
+    bindings: list[dict[str, Any]] = []
+    previous_index = -1
+    for slot in slots:
+        match = images.get(slot['path'])
+        if match is None:
+            raise BuildError('composed slot image is missing from canonical post', 'COMPOSITION_BINDING_INVALID')
+        index, image = match
+        if index <= previous_index:
+            raise BuildError('canonical image order disagrees with slot order', 'COMPOSITION_BINDING_INVALID')
+        previous_index = index
+        caption_block_id = None
+        if slot['caption']:
+            if index + 1 >= len(blocks) or blocks[index + 1]['type'] != 'paragraph':
+                raise BuildError('composed caption is not adjacent to its image', 'CAPTION_STRUCTURE_INVALID')
+            caption_block_id = blocks[index + 1]['id']
+        bindings.append({
+            'id': slot['id'],
+            'role': slot['role'],
+            'path': slot['path'],
+            'image_block_id': image['id'],
+            'image_block_index': index,
+            'caption_block_id': caption_block_id,
+        })
+    return bindings
 
 
-def apply_v2_visual_checks(preflight: dict, roles: list[str], requirements: dict) -> dict:
-    """Add complete-package image semantics without changing the shared drafter parser."""
-    count = preflight['image_count']
-    hashes = [asset['sha256'] for asset in preflight['asset_integrity']]
+def validate_slot_bindings(post: dict, value: Any) -> list[dict[str, Any]]:
+    """Validate stored derived bindings before using them for status recomputation."""
+    if not isinstance(value, list):
+        raise BuildError('slot_bindings must be an array', 'CORRUPT_SNAPSHOT')
+    blocks = post['blocks']
+    by_id = {block['id']: (index, block) for index, block in enumerate(blocks)}
+    seen_slots: set[str] = set(); seen_images: set[str] = set(); seen_captions: set[str] = set()
+    previous_index = -1; bindings: list[dict[str, Any]] = []
+    for raw in value:
+        fields(raw, {'id', 'role', 'path', 'image_block_id', 'image_block_index', 'caption_block_id'}, set(), 'slot binding')
+        slot_id = require_text(raw['id'], 'slot binding id')
+        role = require_text(raw['role'], 'slot binding role')
+        path = require_text(raw['path'], 'slot binding path')
+        image_block_id = require_text(raw['image_block_id'], 'slot image block id')
+        image_index = require_int(raw['image_block_index'], 'slot image block index')
+        caption_id = raw['caption_block_id']
+        if role not in {'cover', 'inline'} or slot_id in seen_slots or image_block_id in seen_images:
+            raise BuildError('duplicate or invalid slot binding', 'CORRUPT_SNAPSHOT')
+        match = by_id.get(image_block_id)
+        if match is None or match[0] != image_index or match[1]['type'] != 'image' or match[1]['path'] != path:
+            raise BuildError('slot binding does not match canonical image', 'CORRUPT_SNAPSHOT')
+        if image_index <= previous_index:
+            raise BuildError('slot binding order is not canonical', 'CORRUPT_SNAPSHOT')
+        if caption_id is not None:
+            if not isinstance(caption_id, str) or not caption_id.strip() or caption_id in seen_captions:
+                raise BuildError('invalid caption block binding', 'CORRUPT_SNAPSHOT')
+            caption = by_id.get(caption_id)
+            if caption is None or caption[0] != image_index + 1 or caption[1]['type'] != 'paragraph':
+                raise BuildError('caption binding is not adjacent to its image', 'CORRUPT_SNAPSHOT')
+            seen_captions.add(caption_id)
+        seen_slots.add(slot_id); seen_images.add(image_block_id); previous_index = image_index
+        bindings.append(dict(raw))
+    return bindings
+
+
+def evaluate_v2_visual(post: dict, assets: list[dict], bindings: list[dict[str, Any]], requirements: dict) -> tuple[dict, list[tuple[str, str]]]:
+    """Return deterministic visual quality facts and their contract errors."""
+    count = sum(block['type'] == 'image' for block in post['blocks'])
+    hashes = [asset['sha256'] for asset in assets]
     unique_count = len(set(hashes))
     mode = requirements['visual_mode']
     minimum = requirements['min_images_per_episode']
     target = requirements['target_images_per_episode']
+    roles = [binding['role'] for binding in bindings]
     errors: list[tuple[str, str]] = []
     if unique_count != len(hashes):
         errors.append(('image files with identical content cannot satisfy multiple slots', 'DUPLICATE_ASSET'))
+    role_contract_valid = roles.count('cover') == 1 and roles.count('inline') >= 2 and bool(roles) and roles[0] == 'cover'
+    cover_position_valid = mode != 'required'
     if mode == 'required':
         if count < minimum or unique_count < minimum:
             errors.append((f'required at least {minimum} approved unique images; found {unique_count}', 'VISUAL_MINIMUM_NOT_MET'))
-        if roles.count('cover') != 1 or roles.count('inline') < 2 or not roles or roles[0] != 'cover':
+        if not role_contract_valid:
             errors.append(('complete visual package needs first-slot cover and at least two inline images', 'INLINE_IMAGES_MISSING'))
+        else:
+            first = post['blocks'][0] if post['blocks'] else None
+            cover_position_valid = bool(
+                first and first['type'] == 'image' and first['id'] == bindings[0]['image_block_id']
+            )
+            if not cover_position_valid:
+                errors.append(('cover image must be the first content block immediately after H1', 'COVER_POSITION_INVALID'))
     elif mode == 'none' and count:
         errors.append(('visual_mode none requires zero images', 'IMAGE_COUNT_MISMATCH'))
+    visual = {
+        'visual_minimum_met': mode != 'required' or (count >= minimum and unique_count >= minimum),
+        'visual_target_met': target is None or unique_count >= target,
+        'unique_image_count': unique_count,
+        'cover_image_count': roles.count('cover'),
+        'inline_image_count': roles.count('inline'),
+        'cover_position_valid': cover_position_valid,
+        'slot_bindings': bindings,
+    }
+    return visual, errors
+
+
+def add_preflight_errors(preflight: dict, errors: list[tuple[str, str]]) -> None:
     for message, code in errors:
         if code not in preflight['error_codes']:
             preflight['errors'].append(message)
             preflight['error_codes'].append(code)
     if errors:
         preflight['status'] = 'failed'
+
+
+def is_v2_visual_error(code: str) -> bool:
+    return (
+        code in {'VISUAL_MINIMUM_NOT_MET', 'INLINE_IMAGES_MISSING', 'DUPLICATE_ASSET',
+                 'COVER_POSITION_INVALID', 'IMAGE_COUNT_MISMATCH'}
+        or code.startswith('ASSET') or 'IMAGE' in code
+    )
+
+
+def derive_v2_episode_state(preflight: dict, metrics: dict, requirements: dict,
+                            review_state: str, review_errors: list[str]) -> dict[str, Any]:
+    """Derive all v2 readiness fields from canonical diagnostics."""
+    error_codes = list(preflight['error_codes'])
+    visual_codes = {code for code in error_codes if is_v2_visual_error(code)}
+    structure_ready = not any(code != 'CONTENT_TOO_SHORT' and code not in visual_codes for code in error_codes)
+    length_ready = metrics['body_char_count'] >= requirements['min_body_chars']
+    visual = preflight['visual_quality']
+    visual_ready = visual['visual_minimum_met'] and not visual_codes
+    editorial_ready = review_state == 'ready'
+    draft_input_ready = structure_ready and length_ready and editorial_ready and visual_ready
+    if preflight['errors']:
+        state = 'assets_pending' if visual_codes else ('content_too_short' if 'CONTENT_TOO_SHORT' in error_codes else 'preflight_failed')
+    else:
+        state = review_state
     return {
-        'visual_minimum_met': mode != 'required' or (count >= minimum and unique_count >= minimum),
-        'visual_target_met': target is None or unique_count >= target,
-        'unique_image_count': unique_count,
-        'cover_image_count': roles.count('cover'),
-        'inline_image_count': roles.count('inline'),
+        'status': state,
+        'errors': list(preflight['errors']) + list(review_errors),
+        'error_codes': error_codes + list(preflight.get('review_error_codes', [])),
+        'body_char_count': metrics['body_char_count'],
+        'structure_ready': structure_ready,
+        'length_ready': length_ready,
+        'editorial_ready': editorial_ready,
+        'visual_ready': visual_ready,
+        'visual_minimum_met': visual['visual_minimum_met'],
+        'visual_target_met': visual['visual_target_met'],
+        'draft_input_ready': draft_input_ready,
     }
 
 
 def review_template(revision: str | None, *, version: int, styles: set[str] | None = None) -> dict:
     checks = required_review_checks(version=version, styles=styles)
-    empty_evidence: str | list = '' if version == 1 else []
     return {
         'schema': f'naver-review/v{version}',
         'status': 'pending',
         'content_revision': revision,
-        'checks': [{'id': name, 'status': 'pending', 'evidence': empty_evidence} for name in sorted(checks)],
+        'checks': [
+            {'id': name, 'status': 'pending', 'evidence': '' if version == 1 else []}
+            for name in sorted(checks)
+        ],
         'reviewed_by': None,
         'reviewed_at': None,
     }
@@ -394,23 +503,27 @@ def prepare(manifest: Path, input_root: Path, output_root: Path, run_id: str, *,
             editorial = load_json_object(entry['editorial'])  # Explicit separate data; never merged into body.
             if contract_version == 2:
                 validate_v2_editorial(editorial, data['requirements'])
-            composed = compose(source, entry['image_slots'], root) if 'image_slots' in entry else None
+            composed, slots = compose(source, entry['image_slots'], root) if 'image_slots' in entry else (None, [])
             post, warnings = build_post(source, root, markdown_text=composed)
             if post['episode'] not in (None, ep):
                 raise BuildError('manifest and article episode disagree', 'EPISODE_IDENTITY_CONFLICT')
             post['episode'] = ep
             expected_images = data['requirements']['images_per_episode'] if contract_version == 1 else None
             preflight = preflight_report(post, source, warnings, expected_images=expected_images, project_root=root)
-            roles, captions = image_slot_metadata(entry.get('image_slots'))
-            metrics = body_metrics(post, excluded_texts=captions)
             if contract_version == 2:
+                bindings = build_slot_bindings(post, slots)
+                caption_ids = [binding['caption_block_id'] for binding in bindings if binding['caption_block_id']]
+                metrics = body_metrics(post, excluded_block_ids=caption_ids)
                 if metrics['body_char_count'] < data['requirements']['min_body_chars']:
                     preflight['errors'].append(
                         f"public body requires at least {data['requirements']['min_body_chars']} characters; found {metrics['body_char_count']}"
                     )
                     preflight['error_codes'].append('CONTENT_TOO_SHORT')
                     preflight['status'] = 'failed'
-                visual = apply_v2_visual_checks(preflight, roles, data['requirements'])
+                visual, visual_errors = evaluate_v2_visual(
+                    post, preflight['asset_integrity'], bindings, data['requirements']
+                )
+                add_preflight_errors(preflight, visual_errors)
                 preflight.update(content_metrics=metrics, visual_quality=visual)
             if preflight['tag_string_length'] > data['requirements']['tag_line_max_chars']:
                 preflight['errors'].append('configured tag limit exceeded')
@@ -442,32 +555,15 @@ def prepare(manifest: Path, input_root: Path, output_root: Path, run_id: str, *,
             except (BuildError, OSError, UnicodeError) as exc:
                 state, reasons = 'invalid_review', [str(exc)]
             review_state = state
-            preflight.update(content_review=state, review_errors=reasons)
-            if preflight['errors']:
-                image_error = any('IMAGE' in c or c.startswith('ASSET') or c in {'VISUAL_MINIMUM_NOT_MET', 'INLINE_IMAGES_MISSING', 'DUPLICATE_ASSET'}
-                                  for c in preflight['error_codes'])
-                length_error = 'CONTENT_TOO_SHORT' in preflight['error_codes']
-                state = 'assets_pending' if image_error else ('content_too_short' if length_error else 'preflight_failed')
-            result.update(status=state, errors=preflight['errors'] + reasons, error_codes=preflight['error_codes'])
+            preflight.update(content_review=state, review_errors=reasons, review_error_codes=[])
             if contract_version == 2:
-                structure_ready = not any(code not in {'CONTENT_TOO_SHORT', 'VISUAL_MINIMUM_NOT_MET', 'INLINE_IMAGES_MISSING', 'DUPLICATE_ASSET'}
-                                          for code in preflight['error_codes'])
-                length_ready = metrics['body_char_count'] >= data['requirements']['min_body_chars']
-                visual_ready = preflight['visual_quality']['visual_minimum_met'] and not any(
-                    code in {'IMAGE_COUNT_MISMATCH', 'VISUAL_MINIMUM_NOT_MET', 'INLINE_IMAGES_MISSING', 'DUPLICATE_ASSET'} or
-                    code.startswith('ASSET') or 'IMAGE' in code for code in preflight['error_codes']
-                )
-                editorial_ready = review_state == 'ready'
-                result.update(
-                    body_char_count=metrics['body_char_count'],
-                    structure_ready=structure_ready,
-                    length_ready=length_ready,
-                    editorial_ready=editorial_ready,
-                    visual_ready=visual_ready,
-                    visual_minimum_met=preflight['visual_quality']['visual_minimum_met'],
-                    visual_target_met=preflight['visual_quality']['visual_target_met'],
-                    draft_input_ready=structure_ready and length_ready and editorial_ready and visual_ready,
-                )
+                result.update(derive_v2_episode_state(
+                    preflight, metrics, data['requirements'], review_state, reasons
+                ))
+            else:
+                if preflight['errors']:
+                    state = 'assets_pending' if any('IMAGE' in c or c.startswith('ASSET') for c in preflight['error_codes']) else 'preflight_failed'
+                result.update(status=state, errors=preflight['errors'] + reasons, error_codes=preflight['error_codes'])
             artifacts[f'{folder}/preflight-report.json'] = encoded(preflight)
             all_sources.extend(records); all_assets.extend(preflight['asset_integrity'])
         except (BuildError, OSError, UnicodeError) as exc:
@@ -488,6 +584,7 @@ def prepare(manifest: Path, input_root: Path, output_root: Path, run_id: str, *,
                 preflight = json.loads(artifacts[name])
                 preflight['content_review'] = 'invalid_review'
                 preflight['review_errors'].append('identical structured review evidence was reused across episodes')
+                preflight.setdefault('review_error_codes', []).append('REVIEW_EVIDENCE_REUSED')
                 artifacts[name] = encoded(preflight)
                 artifacts[f'episode-{ep:02d}/review-template.json'] = encoded(
                     review_template(result['content_revision'], version=2, styles=review_styles)
@@ -519,6 +616,80 @@ def prepare(manifest: Path, input_root: Path, output_root: Path, run_id: str, *,
     if not check:
         write_prepared_run(destination, artifacts, reuse=reuse)
     return report
+
+
+def validate_v2_snapshot_episode(directory: Path, entry: dict, requirements: dict) -> None:
+    """Cross-check v2 report summaries against their canonical episode artifacts."""
+    flags = ('structure_ready', 'length_ready', 'editorial_ready', 'visual_ready', 'draft_input_ready')
+    if any(type(entry.get(key)) is not bool for key in flags):
+        raise BuildError('missing v2 readiness flags', 'CORRUPT_SNAPSHOT')
+    if not entry.get('post') or not entry.get('preflight'):
+        if entry.get('content_revision') is not None or entry.get('status') == 'ready' or any(entry[key] for key in flags):
+            raise BuildError('v2 episode summary lacks canonical artifacts', 'CORRUPT_SNAPSHOT')
+        return
+
+    folder = directory / f"episode-{entry['episode']:02d}"
+    expected_post = f"episode-{entry['episode']:02d}/naver-post.json"
+    expected_preflight = f"episode-{entry['episode']:02d}/preflight-report.json"
+    if entry['post'] != expected_post or entry['preflight'] != expected_preflight:
+        raise BuildError('v2 episode artifact paths disagree', 'CORRUPT_SNAPSHOT')
+    post = load_json_object(folder / 'naver-post.json'); validate_post(post)
+    asset_document = load_json_object(folder / 'asset-integrity.json')
+    fields(asset_document, {'schema', 'assets'}, set(), 'asset integrity')
+    if asset_document['schema'] != 'naver-assets/v1' or not isinstance(asset_document['assets'], list):
+        raise BuildError('invalid asset integrity artifact', 'CORRUPT_SNAPSHOT')
+    assets = asset_document['assets']
+    metrics = load_json_object(folder / 'content-metrics.json')
+    preflight = load_json_object(folder / 'preflight-report.json')
+    if metrics.get('schema') != 'naver-content-metrics/v1' or type(metrics.get('body_char_count')) is not int:
+        raise BuildError('invalid content metrics artifact', 'CORRUPT_SNAPSHOT')
+    if (preflight.get('schema') != 'naver-smarteditor-preflight/v2'
+            or not isinstance(preflight.get('errors'), list)
+            or not isinstance(preflight.get('error_codes'), list)
+            or not isinstance(preflight.get('review_errors'), list)
+            or preflight.get('asset_integrity') != assets
+            or preflight.get('content_metrics') != metrics):
+        raise BuildError('v2 preflight artifacts disagree', 'CORRUPT_SNAPSHOT')
+
+    image_count = sum(block['type'] == 'image' for block in post['blocks'])
+    tag_length = len(' '.join('#' + tag for tag in post['tags']))
+    if (preflight.get('episode') != entry['episode'] or post.get('episode') != entry['episode']
+            or preflight.get('image_count') != image_count or entry.get('image_count') != image_count
+            or preflight.get('tag_string_length') != tag_length or entry.get('tag_string_length') != tag_length
+            or preflight.get('content_revision') != entry.get('content_revision')):
+        raise BuildError('v2 canonical summary disagrees with episode artifacts', 'CORRUPT_SNAPSHOT')
+    if len(assets) == image_count:
+        if content_revision(post, assets) != entry.get('content_revision'):
+            raise BuildError('v2 canonical revision mismatch', 'CORRUPT_SNAPSHOT')
+    elif entry.get('content_revision') is not None:
+        raise BuildError('v2 revision exists without complete assets', 'CORRUPT_SNAPSHOT')
+
+    visual = preflight.get('visual_quality')
+    if not isinstance(visual, dict):
+        raise BuildError('missing v2 visual quality artifact', 'CORRUPT_SNAPSHOT')
+    if 'slot_bindings' in visual:
+        bindings = validate_slot_bindings(post, visual['slot_bindings'])
+        caption_ids = [binding['caption_block_id'] for binding in bindings if binding['caption_block_id']]
+        recomputed_metrics = body_metrics(post, excluded_block_ids=caption_ids)
+        if metrics != recomputed_metrics:
+            raise BuildError('v2 body metrics do not match canonical blocks', 'CORRUPT_SNAPSHOT')
+        recomputed_visual, visual_errors = evaluate_v2_visual(post, assets, bindings, requirements)
+        if visual != recomputed_visual:
+            raise BuildError('v2 visual quality does not match canonical blocks', 'CORRUPT_SNAPSHOT')
+        stored_visual_codes = [code for code in preflight['error_codes'] if is_v2_visual_error(code)]
+        expected_visual_codes = [code for _, code in visual_errors]
+        if stored_visual_codes != expected_visual_codes:
+            raise BuildError('v2 visual errors disagree with canonical blocks', 'CORRUPT_SNAPSHOT')
+
+    review_state = preflight.get('content_review')
+    review_errors = preflight['review_errors']
+    if review_state not in {'ready', 'review_pending', 'stale_review', 'needs_revision', 'invalid_review'}:
+        raise BuildError('invalid v2 review summary', 'CORRUPT_SNAPSHOT')
+    derived = derive_v2_episode_state(preflight, metrics, requirements, review_state, review_errors)
+    compared = ('status', 'errors', 'error_codes', 'body_char_count', 'structure_ready', 'length_ready',
+                'editorial_ready', 'visual_ready', 'visual_minimum_met', 'visual_target_met', 'draft_input_ready')
+    if any(entry.get(key) != derived[key] for key in compared):
+        raise BuildError('v2 readiness summary does not match canonical diagnostics', 'CORRUPT_SNAPSHOT')
 
 
 def read_snapshot(directory: Path) -> dict:
@@ -554,22 +725,35 @@ def read_snapshot(directory: Path) -> dict:
     all_ready = all(e.get('status') == 'ready' and (version == 1 or e.get('draft_input_ready') is True) for e in entries)
     if version == 2:
         requirements = report.get('requirements')
-        if not isinstance(requirements, dict) or report.get('quality_contract') != 'full-article-v2':
+        requirement_fields = {
+            'content_mode', 'primary_style', 'secondary_style', 'min_body_chars',
+            'visual_mode', 'min_images_per_episode', 'target_images_per_episode',
+            'tag_line_max_chars',
+        }
+        if (not isinstance(requirements, dict) or set(requirements) != requirement_fields
+                or report.get('quality_contract') != 'full-article-v2'):
             raise BuildError('missing v2 quality contract', 'CORRUPT_SNAPSHOT')
         minimum_body = requirements.get('min_body_chars')
-        if type(minimum_body) is not int or minimum_body < 3000:
-            raise BuildError('invalid v2 body requirement', 'CORRUPT_SNAPSHOT')
+        minimum_images = requirements.get('min_images_per_episode')
+        target_images = requirements.get('target_images_per_episode')
+        tag_limit = requirements.get('tag_line_max_chars')
+        visual_mode = requirements.get('visual_mode')
+        if (type(minimum_body) is not int or minimum_body < 3000
+                or requirements.get('content_mode') != 'full_article'
+                or visual_mode not in {'required', 'optional', 'none'}
+                or requirements.get('primary_style') not in WRITING_STYLES
+                or requirements.get('secondary_style') not in WRITING_STYLES
+                or requirements.get('primary_style') == requirements.get('secondary_style')
+                or type(tag_limit) is not int or not 0 <= tag_limit <= 100
+                or (visual_mode == 'required' and (
+                    type(minimum_images) is not int or minimum_images < 3
+                    or type(target_images) is not int or target_images < minimum_images
+                ))
+                or (visual_mode == 'optional' and (minimum_images != 0 or target_images is not None))
+                or (visual_mode == 'none' and (minimum_images != 0 or target_images != 0))):
+            raise BuildError('invalid v2 requirements', 'CORRUPT_SNAPSHOT')
         for entry in entries:
-            flags = [entry.get(key) for key in ('structure_ready', 'length_ready', 'editorial_ready', 'visual_ready')]
-            if any(type(flag) is not bool for flag in flags) or type(entry.get('draft_input_ready')) is not bool:
-                raise BuildError('missing v2 readiness flags', 'CORRUPT_SNAPSHOT')
-            body_count = entry.get('body_char_count')
-            if entry.get('content_revision') is not None and (
-                type(body_count) is not int or entry['length_ready'] != (body_count >= minimum_body)
-            ):
-                raise BuildError('v2 length summary mismatch', 'CORRUPT_SNAPSHOT')
-            if entry['draft_input_ready'] != all(flags) or (entry.get('status') == 'ready') != entry['draft_input_ready']:
-                raise BuildError('v2 readiness summary mismatch', 'CORRUPT_SNAPSHOT')
+            validate_v2_snapshot_episode(directory, entry, requirements)
     totals = {'requested': len(entries), 'ready': sum(e.get('status') == 'ready' for e in entries),
               'images': sum(e.get('image_count', 0) for e in entries), 'missing': sum(e.get('status') == 'missing' for e in entries)}
     if (report.get('status') != ('ready' if all_ready else 'blocked') or report.get('queue') != (requested if all_ready else [])
