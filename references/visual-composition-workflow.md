@@ -37,9 +37,11 @@ Identify moments where an image adds information or controls the emotional pace.
 - `transition`: mark a substantial shift in topic or emotional temperature
 - `summarize`: reinforce a practical checklist or final decision frame
 
-Do not add a slot when the image would merely repeat the heading, duplicate a nearby image, or act as decoration without new value. Do not force an image under every heading or derive a fixed count from article length.
+Do not add a slot when the image would merely repeat the heading, duplicate a nearby image, or act as decoration without new value. Do not force an image under every heading or derive a ranking formula from article length. For a `naver-series/v2` image-inclusive complete package, apply the documented production floor of one cover plus two inline images; this is a completeness contract, not an SEO rule. If three distinct useful beats do not exist, revise the article or report the visual package incomplete instead of adding decoration.
 
 ## 4. Select slots
+
+For a v2 complete package, select at least three distinct slots: exactly one cover first and at least two inline slots. Use the primary writing profile's target count when the user did not specify a count; expert defaults to five. Text-only and optional-image requests do not inherit this production floor.
 
 ### Cover slot
 

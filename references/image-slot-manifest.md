@@ -2,6 +2,8 @@
 
 The manifest connects explicit article markers to approved local image files. It is JSON so validation and insertion require only the Python standard library.
 
+The two-slot sample below demonstrates the generic composition format only. A `naver-series/v2` complete article with `visual_mode: required` must instead provide at least three approved, content-unique assets: exactly one `cover` followed by at least two `inline` slots. See [`../skills/naver-series-workflow/references/visual-quality-gate.md`](../skills/naver-series-workflow/references/visual-quality-gate.md).
+
 ## Article marker
 
 ```md
