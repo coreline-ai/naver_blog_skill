@@ -1,5 +1,7 @@
 .DS_Store
 assets/
+output/
+runs/
 __pycache__/
 *.pyc
 .creator-advisor-private/

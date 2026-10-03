@@ -2,6 +2,8 @@
 
 Use this reference after an article has been finalized and visual slots have been selected.
 
+Choose each mode from the section's actual informational or emotional job, using [contextual image direction](../skills/naver-series-workflow/references/contextual-image-direction.md). Do not make photography, infographics, or a particular illustration style the default for every topic. An explicit user choice takes priority; adapt the scene and information structure within it.
+
 ## Mode decision table
 
 | Mode | Use when | Avoid when |
@@ -27,7 +29,7 @@ Mobile priority: <subject size and safe crop>
 Prohibited: <logos, fake UI, excessive text, evidence-like documents>
 ```
 
-Change only what the section requires. Consistency matters more than making every image visually dramatic.
+Rebuild this brief for each article. Keep the article's visual identity coherent, but vary camera distance, information structure, or medium when the section benefits. Meaningful variety is not random dramatization, and a shared palette is not permission to reuse one layout throughout unrelated topics.
 
 ## `photorealistic-natural`
 
@@ -86,10 +88,12 @@ For operational tutorials, request a real screenshot or use an official source. 
 Use case: <mode>
 Asset type: <cover or inline blog image>
 Section purpose: <what the image must help the reader understand or feel>
+Context: <article title, adjacent section, concrete situation and mood>
+Choice rationale: <why this medium and layout fit this section rather than the previous template>
 Scene/backdrop: <environment or information layout>
 Subject: <main subject and concrete details>
 Style/medium: <photo, editorial illustration, diagram, generic mockup>
-Composition/framing: <landscape, subject placement, mobile crop>
+Composition/framing: <aspect ratio chosen for this scene, subject placement, mobile crop>
 Lighting/mood: <lighting and emotional temperature>
 Color palette: <shared brief palette>
 Text (verbatim): "<exact essential text only>"

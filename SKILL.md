@@ -104,6 +104,8 @@ Finalize and fact-check the article before visual planning. Then read [`referenc
 ### Visual routing and boundaries
 
 - Select image slots by informational or emotional value, not by a fixed image count and not automatically for every heading.
+- Choose the visual medium, scene, composition, and mood from the article title, adjacent section, concrete situation, and explanatory purpose. A writing profile is a tone input, not a reusable image template. Follow [contextual image direction](skills/naver-series-workflow/references/contextual-image-direction.md) for new or replacement visuals.
+- For multiple articles, reset the visual brief per article and compare the set before generation and after QA. Changing only the topic label, background, or palette does not resolve a repeated layout. Deliberate series identity is allowed; unrelated topics must not inherit it by accident.
 - Let the confirmed writing profile influence visual temperature, palette, reader distance, and humor without modifying the profile file.
 - Prefer actual user screenshots or official source material when exact UI, forms, policies, or instructions matter. Do not fabricate a branded interface, official document, evidence photo, or experience record.
 - Keep important information in article text. Images may support the explanation but must not become the only carrier of facts.

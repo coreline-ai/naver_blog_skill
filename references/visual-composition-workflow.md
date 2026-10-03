@@ -71,6 +71,8 @@ Use lowercase ASCII IDs containing letters, digits, and hyphens. Keep IDs semant
 
 ## 5. Build a consistency brief
 
+Read [contextual image direction](../skills/naver-series-workflow/references/contextual-image-direction.md) before choosing a reusable look. Start from this article's title, scene, reader question, and section purposes—not the last article's template. For each slot, record what the reader learns and why the chosen medium and composition convey it.
+
 Before prompting individual slots, define one shared visual brief:
 
 - article mood and emotional temperature
@@ -83,7 +85,9 @@ Before prompting individual slots, define one shared visual brief:
 - mobile crop priority
 - prohibited elements such as logos, in-image text, evidence-like documents, or money imagery
 
-Use the confirmed writing profile as an input. For example, a bright but balanced reviewer voice may use natural light, restrained green accents, realistic textures, and uncluttered composition. Do not modify the profile file merely because a visual brief was created.
+Use the confirmed writing profile as a tone input, not a fixed palette, backdrop, camera angle, or medium. Consistency belongs within the article's intended visual direction; it does not require every image or topic to use the same layout. Photos, macro details, diagrams, or illustrations may coexist when they serve different section purposes and remain editorially coherent. Do not modify the profile file merely because a visual brief was created.
+
+For a multi-article request, compare the proposed briefs before generating. If unrelated topics share a medium, scene, and information layout by default, redesign the affected visual concept rather than changing colors or nouns. Respect an explicitly requested recurring series style and record why a repeated treatment helps those particular articles.
 
 ## 6. Choose the visual mode and write prompts
 
@@ -128,10 +132,13 @@ Review each asset against these categories:
 | `anatomy` | Faces, hands, posture, and devices look plausible | Extra fingers or fused objects |
 | `text` | Required text is exact; otherwise no legible invented text | Broken Korean or fake labels |
 | `brand` | No unauthorized logo or fabricated official UI | Fake brokerage or government interface |
-| `style` | Palette, realism, and recurring subjects stay coherent | Random switch from documentary photo to cartoon |
+| `style` | The selected media serve the topic and remain coherent with the article's brief; intentional photo/diagram mixes are allowed | Copying the previous topic's look or changing medium without an explanatory reason |
+| `purposeful_variety` | Each slot adds distinct information; the multi-article set reflects different contexts or a deliberate series identity | Same desk, cards, camera angle, or comparison panels with only labels/backgrounds changed |
 | `crop` | Core subject remains clear on mobile | Key object placed at the extreme edge |
 
 If one category fails, make at most one targeted regeneration that changes only the failed dimension. Do not make broad prompt changes that discard otherwise-correct composition. If the retry fails, mark the slot `failed` and report it rather than looping.
+
+Inspect the set as well as individual files. Unique filenames or pixel hashes prove distinct assets, not contextual variety or visual quality. Include a concrete topic/section-fit finding in the visual review; if the whole concept is wrong, correct that concept instead of merely recoloring the background. This is manual visual QA, not an automatic semantic guarantee from the composer.
 
 For UI instructions, official forms, branded products, or evidence images, use an actual user-provided or official source image. A generated conceptual UI may be used only when exact operation is not being taught, contains no copied branding, and is clearly described as illustrative.
 
