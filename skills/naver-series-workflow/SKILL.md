@@ -33,7 +33,7 @@ description: SEO 시리즈 원고와 이미지를 본문 3,000자·이미지 포
 
 1. [시리즈 계약](references/series-contract.md)을 읽고 신규 완성형은 `naver-series/v2` manifest를 만든다. v1은 기존 입력 호환용이며 전문가 품질 완료로 승격하지 않는다. 기존 파일이 있으면 재사용하고 누락 회차를 임의로 창작하지 않는다.
 2. 본문 전용 원고, 편집 메모, review를 별도 파일로 준비한다. writer 전체 대화 응답에서 정규식으로 일부 문구를 삭제해 본문을 추출하지 않는다. 불분명한 기존 입력은 경계를 확인한다.
-3. 이미 배치된 이미지는 순서를 유지한다. 새 이미지가 요청된 경우 현재 이미지 도구 지침, [시각 품질 게이트](references/visual-quality-gate.md), 루트의 시각 구성 런북을 읽고 최종 원고에서 시각 비트를 추출한 다음 생성·검수한다. v2 `visual_mode: required`에서는 최소 3장, cover 1장, inline 2장, 고유 파일·승인·관련성을 모두 검사한다. 스타일 목표 미달은 별도 표시한다.
+3. 이미 배치된 이미지는 순서를 유지한다. 새 이미지가 요청된 경우 현재 이미지 도구 지침, [상황별 이미지 연출](references/contextual-image-direction.md), [시각 품질 게이트](references/visual-quality-gate.md), 루트의 시각 구성 런북을 읽고 최종 원고에서 시각 비트를 추출한 다음 생성·검수한다. 제목·문맥·상황·분위기·설명 목적에 따라 회차별 매체·장면·구도를 새로 선택하고, 생성 전 계획과 생성 후 전체 이미지 묶음을 비교한다. 배경·색만 바꾼 반복 템플릿은 차별화로 인정하지 않으며, 사용자가 요청한 시리즈 공통 스타일은 존중한다. v2 `visual_mode: required`에서는 최소 3장, cover 1장, inline 2장, 고유 파일·승인·관련성을 모두 검사한다. 스타일 목표 미달은 별도 표시한다.
 4. 이미지 슬롯을 쓸 때 기존 저장소 `scripts/insert_article_images.py`를 재사용한다. prepare CLI는 검증된 슬롯만 메모리에서 합성하며 원고에 쓰지 않는다.
 5. `scripts/prepare_series.py prepare`를 실행한다. 처음에는 review_pending이어도 정본·revision·검수 템플릿이 출력된다. 검토자가 실제 본문·이미지·근거를 검수한 뒤 review를 작성하고 **새 run-id**로 다시 준비한다. `question_resolution`, `practical_specificity`, `source_integrity`, `title_body_match`를 포함한 템플릿의 pending을 일괄 passed로 바꾸지 않는다.
 6. 요청한 모든 회차가 `structure_ready`, `length_ready`, `editorial_ready`, `visual_ready`를 통과해야 `draft_input_ready`와 준비 queue가 생긴다. manifest의 queue/ready는 업로드 승인이나 실제 저장 증거가 아니다. prepare에서는 여기서 끝낸다.
