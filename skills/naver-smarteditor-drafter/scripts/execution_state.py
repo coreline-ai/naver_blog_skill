@@ -83,11 +83,13 @@ CHECKS = {
     'blank_verified': {'blank_editor','complete_observation'},
 }
 VERIFY_FROM = {'editor_checked':{'ready'},'input_verified':{'inserting'},
-               'reopened_verified':{'save_acknowledged'},'blank_verified':{'reopened_verified'}}
+               'reopened_verified':{'save_acknowledged'},'blank_verified':{'reopened_verified','blank_verified'}}
 OPERATIONS = {
     'insert_block': {'editor_checked','inserting'}, 'upload_image': {'editor_checked','inserting'},
     'apply_quote': {'inserting'}, 'open_tag_settings': {'inserting'}, 'input_tags': {'inserting'}, 'close_tag_settings': {'inserting'},
-    'save': {'input_verified'}, 'open_saved': {'save_acknowledged'}, 'new_editor': {'reopened_verified'},
+    # A recovery prompt may appear after an earlier blank observation. Recheck
+    # only the navigation boundary; completed content cannot be inserted again.
+    'save': {'input_verified'}, 'open_saved': {'save_acknowledged'}, 'new_editor': {'reopened_verified','blank_verified'},
 }
 STATES = {'ready','editor_checked','inserting','input_verified','save_requested','save_acknowledged',
           'reopened_verified','blank_verified','needs_reconciliation','save_unknown','legacy_saved_reported'}
