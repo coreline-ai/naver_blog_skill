@@ -51,6 +51,20 @@ class ExecutionStateTests(unittest.TestCase):
         self.assertEqual(resumed.status(self.key)['resume_decision'],'verify_blank_only')
         self.assertEqual(resumed.status(self.key)['pending_operations'],[])
         self.assertEqual(sum(e['event_type']=='operation_intent' and e['payload']['operation']=='save' for e in resumed.events(self.key)),1)
+    def test_late_recovery_prompt_can_recheck_navigation_not_reinsert(self):
+        self.complete()
+        oid=self.store.begin_operation(self.key,self.lease,'new_editor',detail={'reason':'late recovery prompt'})
+        with self.assertRaises(StateError):
+            self.store.verify(self.key,self.lease,'blank_verified',self.evidence('blank_verified'))
+        self.store.finish_operation(self.key,self.lease,oid,outcome='observed',observed={'blank':True},evidence_ref='mock://fresh-blank')
+        bad=self.evidence('blank_verified');bad['checks']['blank_editor']=False
+        with self.assertRaises(StateError):
+            self.store.verify(self.key,self.lease,'blank_verified',bad)
+        self.store.verify(self.key,self.lease,'blank_verified',self.evidence('blank_verified'))
+        with self.assertRaises(StateError):self.store.begin_operation(self.key,self.lease,'insert_block')
+        with self.assertRaises(StateError):self.store.begin_operation(self.key,self.lease,'save')
+        with self.assertRaises(StateError):self.store.begin_operation(self.key,self.lease,'publish')
+        self.assertEqual(self.store.status(self.key)['resume_decision'],'skip')
     def test_unknown_save_is_not_complete(self):
         oid=self.save_pending()
         self.store.finish_operation(self.key,self.lease,oid,outcome='unknown',observed=None,evidence_ref=None)
