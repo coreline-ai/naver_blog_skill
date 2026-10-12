@@ -1,0 +1,6 @@
+interface:
+  display_name: "네이버 블로그 글·이미지 완성"
+  short_description: "주제부터 원고·카드뉴스 이미지 생성·검수·본문 삽입까지 완성"
+  default_prompt: "$naver-blog-style 주제 [작성할 주제]로 정보 슬라이드·카드뉴스형 이미지 5장을 생성하고 검수해 본문에 넣은 네이버 블로그 글을 완성해줘."
+policy:
+  allow_implicit_invocation: true

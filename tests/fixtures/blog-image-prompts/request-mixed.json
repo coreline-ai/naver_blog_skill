@@ -1,0 +1,12 @@
+{
+  "schema": "naver-blog-image-request/v1",
+  "article": {"path": "tests/fixtures/blog-image-prompts/article.md"},
+  "presentation": "mixed",
+  "requested_count": 3,
+  "additional_requirements": "장면의 상황과 설명 목적을 우선하고 이전 글의 카드 디자인을 복제하지 마세요.",
+  "slots": [
+    {"id":"cover","role":"cover","purpose":"출근길 착용 상황","prompt":"아침 출근길에 얇은 겉옷을 입고 걷는 사람의 일상 장면. 이동 중 원단의 접힘과 주변 빛을 자연스럽게 표현.","mode":"photorealistic-natural","heading_hint":"","placement":"H1 바로 아래","alt":"출근길 겉옷 착용 상황"},
+    {"id":"material","role":"inline","purpose":"소재와 마감 확인","prompt":"원단 표면, 봉제, 지퍼를 서로 구분해서 살펴보는 근접 장면과 명확한 정보 계층.","mode":"photorealistic-natural","heading_hint":"소재를 가까이 보면 무엇이 보일까요?","placement":"소재 설명 뒤","alt":"원단과 마감 확인"},
+    {"id":"packing","role":"inline","purpose":"휴대 과정과 위치 관계","prompt":"겉옷을 접고 가방에 넣는 손동작의 순서를 보여주는 장면. 수치 없이 옷과 가방의 관계를 표현.","mode":"stylized-concept","heading_hint":"가방에 넣는 과정은 어떻게 보여줄까요?","placement":"휴대 설명 뒤","alt":"겉옷을 가방에 넣는 과정"}
+  ]
+}

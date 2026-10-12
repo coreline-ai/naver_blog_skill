@@ -4,7 +4,7 @@
 
 <img width="2752" height="1536" alt="나만의_블로그_문체_스타일_스킬" src="https://github.com/user-attachments/assets/1e2d5b71-fdac-4ccd-b873-545a3ea04663" />
 
-### 선택형 인터뷰로 나만의 문체를 만들고, SEO 시리즈 작성부터 네이버 SmartEditor 임시저장까지 연결하는 블로그 스킬 모음
+### 기존 블로그 본문 참고·제목 선정·글과 이미지 완성부터 시리즈·SmartEditor 임시저장까지 연결하는 스킬 모음
 
 <p>
   <a href="./SKILL.md">
@@ -35,7 +35,7 @@
 **문체는 고정하고, 주제만 바꿉니다.**  
 말투·리듬·근거 사용법·문단 구조를 프로필로 분리하고, 명시적으로 요청한 경우에만 실사·창작·인포그래픽을 생성해 원고에 배치합니다.
 
-[빠른 시작](#-빠른-시작) · [핵심 기능](#-핵심-기능) · [작동 방식](#-작동-방식) · [이미지 구성](#-visual-composer) · [키워드 추천](#naver-creator-keyword-recommender) · [제목 최적화](#-제목-최적화-스킬) · [시리즈 작성](#seo-series-writer) · [SmartEditor 초안](#naver-smarteditor-drafter) · [전체 워크플로](#naver-series-workflow) · [대표 프롬프트](#skill-representative-prompts) · [파일 구조](#-파일-구조) · [사용 예시](#-사용-예시)
+[기능별 사용 가이드](./docs/skill-capabilities.md) · [현재 상태](#skill-current-status) · [빠른 시작](#-빠른-시작) · [핵심 기능](#-핵심-기능) · [작동 방식](#-작동-방식) · [이미지 구성](#-visual-composer) · [문답형 작성](#naver-blog-wizard) · [키워드 추천](#naver-creator-keyword-recommender) · [제목 최적화](#-제목-최적화-스킬) · [시리즈 작성](#seo-series-writer) · [SmartEditor 초안](#naver-smarteditor-drafter) · [전체 워크플로](#naver-series-workflow) · [대표 프롬프트](#skill-representative-prompts) · [파일 구조](#-파일-구조) · [사용 예시](#-사용-예시)
 
 </div>
 
@@ -74,9 +74,12 @@
 | 🧠 **행동 규칙 추출** | 추상적인 수식어를 문장, 문단, 근거, 제목에 적용할 수 있는 규칙으로 변환합니다. |
 | 🗂️ **4단계 규칙 분류** | 스타일을 `always`, `usually`, `optional`, `avoid`로 구분합니다. |
 | 📝 **프로필 기반 작성** | 저장된 프로필을 불러와 새로운 주제의 초안과 수정본에 동일한 문체를 적용합니다. |
+| 📖 **기존 블로그 본문 참고** | 새 정보형·방법형·비교형 글은 기본 5개 본문에서 검색 의도·공통 내용·빠진 정보를 분석하고 공식 근거로 사실을 확인합니다. |
+| 🏷️ **검색·홈판 제목 선정** | 통합 작성에서는 검색형·홈판형·혼합형 각 3개를 내부 비교해 혼합형 제목 1개를 적용하며 명시 조건을 우선합니다. |
+| 💬 **문답형 글·이미지 작성** | 글쓰기·이미지 옵션을 한 질문씩 선택하며 원고 검토, 옵션 변경, 중단과 재개를 지원합니다. |
 | 📱 **모바일 가독성** | 짧은 문단, 독립 핵심 문장, 필요한 만큼의 목록과 소제목을 사용합니다. |
 | 🔎 **사실·의견 분리** | 공식 정보, 개인 관찰, 추천, 불확실한 내용을 구분합니다. |
-| 🎨 **문맥 기반 이미지 구성** | 이미지가 필요한 소제목만 선별하고 실사·창작·인포그래픽을 목적에 맞게 선택합니다. |
+| 🎨 **문맥 기반 이미지 구성** | 제목·인접 본문·설명 목적에서 슬롯과 장별 프롬프트를 만들고 일반·정보 슬라이드·혼합형을 적용합니다. 이미지 포함 단일 글은 미지정 시 표지 포함 5장, 명시 N은 정확한 완료 수량입니다. |
 | 🧾 **Manifest 기반 삽입** | 승인된 로컬 이미지만 명시적 슬롯에 비파괴적으로 삽입합니다. |
 | 👁️ **시각 QA** | 문맥, 사실성, 손·얼굴, 글자, 브랜드, 스타일, 모바일 크롭을 확인합니다. |
 | 📈 **최근 유입 키워드 추천** | 크리에이터 어드바이저의 완료된 최근 7일을 직전 7일과 비교해 주제를 정하고, 요청 시 블로그 홈 제목 구조를 보완해 대표 제목을 안전하게 추천합니다. |
@@ -84,6 +87,26 @@
 | 🧱 **네이버 정본 준비** | Markdown·구조형 JSON을 `naver-post/v1`으로 변환하고 이미지·태그·서식을 검사합니다. |
 | ✍️ **안전한 순차 임시저장** | SmartEditor에서 한 편씩 입력·임시저장·재열기·빈 화면 확인 후 다음 회차로 진행합니다. |
 | 🛡️ **네이버 품질 가드레일** | 키워드 반복, 복제 콘텐츠, 낚시성 제목, 과장 광고, 억지 CTA를 피합니다. |
+
+<a id="skill-current-status"></a>
+
+## 현재 스킬 구성과 검증 상태
+
+**2026-10-12 현재 작업 트리 기준으로 기본 스킬 1개와 전용 스킬 6개가 구현돼 있습니다.** 기능별 기본값, 복사해서 쓰는 예제, 적용 범위는 [기능별 사용 가이드](./docs/skill-capabilities.md)에서 확인할 수 있습니다. 저장소 변경이 GitHub 배포나 전역 스킬 등록을 뜻하지는 않습니다.
+
+| 스킬 | 담당 범위 |
+|---|---|
+| [naver-blog-style](./SKILL.md) | 단일 글 작성·재작성, 문체 프로필, 기존 본문 참고, 제목 선정, 요청한 이미지 완성 |
+| [naver-blog-wizard](./skills/naver-blog-wizard/SKILL.md) | 단일 글·이미지 옵션 문답, 파일 사용·편집, 선택 변경·중단·재개 |
+| [naver-title](./skills/naver-title/SKILL.md) | 검색형·홈판형·혼합형 제목 생성과 검수 |
+| [naver-creator-keyword-recommender](./skills/naver-creator-keyword-recommender/SKILL.md) | 실제 최근 유입 기반 주제·대표 제목 추천, 요청한 홈 제목 패턴 분석 |
+| [seo-series-writer](./skills/seo-series-writer/SKILL.md) | 연재 목차·회차별 원고 작성·재작성 |
+| [naver-series-workflow](./skills/naver-series-workflow/SKILL.md) | 여러 편의 원고·이미지·검수 패키지 준비와 명시한 임시저장 연결 |
+| [naver-smarteditor-drafter](./skills/naver-smarteditor-drafter/SKILL.md) | 완성 원고 사전검증, 순차 입력·임시저장·재열기 검증 |
+
+최근 구현의 [검증 기록](./dev-plan/implement_20261012_181310.md#phase-4-전체-회귀5개-참고5장-이미지-실검증)은 **Python 274건·Node 28건 통과**, 실제 고유 블로그 본문 5개 참고와 승인된 카드뉴스 5장 생성·본문 삽입을 보고합니다. 이는 이전 구현 검증 기록이며 이번 문서 갱신에서 다시 실행한 테스트 수치가 아닙니다. 문답형의 검증 범위는 [별도 구현 기록](./dev-plan/implement_20261012_151158.md#구현검증-결과)을 참고하세요.
+
+이미지 패키지의 로컬 검사와 실제 생성·시각 검수는 구분합니다. 별도 휴대폰/375px 브라우저 검수, 설치된 환경의 자동 스킬 발동은 아직 확인하지 않았습니다. SmartEditor는 로그인·관찰·업로드 도구를 확인한 실행에서 임시저장까지만 수행하며, 로컬 테스트 통과를 실제 네이버 저장 성공으로 표시하지 않습니다.
 
 ## 🚀 빠른 시작
 
@@ -120,6 +143,32 @@ docs/naver-blog-style-profile.md에 저장된 프로필을 먼저 로드하고,
 
 ### 5. 이미지가 포함된 글 만들기
 
+주제·이미지 유형·장수·완성을 한 번에 요청할 수 있습니다. 아래 요청은 원고 작성 후 **표지 포함 정보 슬라이드 5장을 실제 생성·검수하고 본문에 넣는 작업**으로 처리합니다. 내부 원고 파일과 슬롯 JSON은 에이전트가 준비합니다.
+
+```text
+주제: 한국인 여행객 장바구니에서 가장 높은 비중을 차지하는 돈키호테 인기 품목을 카테고리별로 정리
+정보 슬라이드 / 카드뉴스형 5장으로 네이버 블로그 스킬을 이용해서 완성해줘!
+```
+
+구매 비중·인기 순위는 해당 주장의 실제 출처를 확인하고 근거가 없으면 수치나 순위를 만들지 않습니다. `정보 슬라이드/카드뉴스형`은 표지까지 모두 슬라이드이며, **이미지 유형을** `혼합형`으로 지정할 때만 표지가 일반 이미지입니다. 제목의 혼합형 전략은 이미지 유형을 바꾸지 않습니다. 이미지 포함 단일 글의 장수 미지정은 총 5장, 명시한 장수는 그 수량을 우선합니다. 시리즈는 기존 작성 프로필의 미지정 목표를 유지합니다. `프롬프트만` 또는 `이미지는 생성하지 마`라고 하면 계획에서 끝냅니다.
+
+자세한 흐름과 완료 기준은 [주제부터 이미지 포함 원고 완성](./references/topic-image-completion-workflow.md)을 참고하세요. 저장소 직접 사용은 SKILL.md를 읽어 적용하고, 설치·등록된 환경에서는 `$naver-blog-style`로도 호출할 수 있습니다. 이 저장소의 메타데이터 추가 자체가 전역 설치를 수행하지는 않습니다.
+
+### 기존 블로그 본문 참고
+
+새 정보형·방법형·비교형 글은 기본적으로 **네이버 블로그 서비스 검색의 기존 글 5개 본문**을 참고합니다. 검색 요약과 실제 본문을 구분해 수집하고, 공통 검색 의도·설명·빠진 정보를 분석한 뒤 공식 자료로 사실을 확인해 새 원고를 작성합니다. 다른 작성자의 경험을 자신의 경험으로 쓰거나 반복 언급을 공식 인기 순위로 바꾸지 않습니다.
+
+참고 수는 1~8개이며 **이미지 장수·제목 후보 수와 별개**입니다. `네이버 검색 결과를 참고`는 통합 블로그 검색, 미지정은 블로그 서비스 검색입니다. `기존 글은 참고하지 마`를 우선하고, 재작성은 검색 보완 명시 시에만 적용합니다. 개인 경험 후기·일기·문체 인터뷰는 명시 참고 요청만 적용합니다. 제목/이미지 전용 요청의 원고를 조사·재작성하지 않습니다.
+
+```text
+돈키호테 쇼핑리스트를 기존 네이버 블로그 글 3개의 본문을 참고해 작성하고,
+공식 자료로 확인한 뒤 정보 슬라이드 5장으로 완성해줘.
+
+기존 블로그 글은 참고하지 말고 제공한 자료만으로 네이버 블로그 글을 작성해줘.
+```
+
+실제 참고 수·부분 실패·잘린 문맥을 따로 기록합니다. 명시한 N개 본문이 부족하면 참고 요구를 충족한 완료로 표시하지 않습니다. 기본 5개의 부분 결과는 확보한 범위를 밝히고 사용할 수 있습니다. [수집·분석 흐름](references/blog-research-workflow.md), [입출력 계약과 CLI](references/blog-research-contract.md)를 참고하세요. 로컬 도우미는 JSON·길이·중복·상태를 검사하며 브라우저 수집·의미 분석·이미지 생성은 현재 에이전트가 수행합니다.
+
 ```text
 저장된 스타일 프로필로 주제 "[작성할 주제]"의 글을 작성해줘.
 사실 확인이 끝난 원고를 기준으로 대표 이미지와 필요한 본문 이미지를 만들어줘.
@@ -152,27 +201,66 @@ docs/naver-blog-style-profile.md에 저장된 프로필을 먼저 로드하고,
 > [!TIP]
 > 이미 프로필이 있다면 인터뷰를 반복할 필요가 없습니다. 프로필 파일을 먼저 로드하고 주제, 글 유형, 독자 의도만 전달하면 됩니다.
 
+<a id="naver-blog-wizard"></a>
+
+## 네이버 블로그 문답형 글·이미지
+
+[naver-blog-wizard](skills/naver-blog-wizard/SKILL.md)는 단일 글 작성과 이미지 설정을 한 질문씩 확인합니다. 이미 알려준 옵션은 건너뛰고, 앞선 선택 변경·중단·재개를 지원합니다.
+
+```text
+$naver-blog-wizard 주제는 실내 식물 관리야. 글쓰기와 이미지 옵션을 한 번에 하나씩 질문하면서 진행해줘.
+```
+
+| 선택 경로 | 결과 |
+|---|---|
+| 글만 | 사용 선택된 원고 |
+| 프롬프트만 | 이미지 계획·프롬프트 |
+| 이미지 생성 / 내 파일 | 실제 파일 검사·시각 검수·이미지 포함 원고 |
+| 기존 이미지 편집 | 원본을 사용한 편집 결과, 원고 연결 시 합성까지 |
+
+이미지 유형은 일반·정보 슬라이드·혼합형이며 장수는 표지 포함 총 N장입니다. 자동 선택은 추천 5장을 확인한 뒤 적용합니다. info-slide는 표지까지 슬라이드, mixed는 일반 표지 1장과 슬라이드 N-1장입니다. 단일 글에 시리즈 15편·3,000자·최소 3장을 적용하지 않습니다.
+
+전체 저장소의 공통 scripts·sibling 스킬이 필요하며 하위 폴더만 복사하는 설치는 지원하지 않습니다. 실행 환경은 Python 3.11+, macOS/Linux와 기존 Pillow입니다. PyYAML은 스킬 메타데이터 검사 도구에 필요하며 런타임에는 사용하지 않습니다. 사용자 파일은 선택한 작업 영역의 `naver-blog-output/SESSION-ID/`에 보관합니다. 네이버 입력·임시저장·발행은 별도 흐름입니다.
+
+```sh
+python3.11 -B skills/naver-blog-wizard/scripts/wizard_session.py init --work-root /absolute/user/workspace
+python3.11 -B skills/naver-blog-wizard/scripts/wizard_session.py next --session /absolute/user/workspace/naver-blog-output/SESSION-ID/session.json
+python3.11 -B skills/naver-blog-wizard/scripts/wizard_session.py pause --session /absolute/user/workspace/naver-blog-output/SESSION-ID/session.json --expected-revision N
+python3.11 -B skills/naver-blog-wizard/scripts/wizard_session.py resume --session /absolute/user/workspace/naver-blog-output/SESSION-ID/session.json --expected-revision N
+```
+
+세션 명령·산출물 등록은 [세션 계약](skills/naver-blog-wizard/references/session-contract.md)을 따릅니다. 결과가 불명확한 이미지 작업은 실제 반환 파일을 먼저 대조하며 자동 중복 생성하지 않습니다. 로컬 패키지 검증 통과는 실제 생성·시각 QA를 대신하지 않습니다.
+
 ## 🔄 작동 방식
 
 ```mermaid
 flowchart TD
-    A["주제·목적 입력"] --> B{"저장된 프로필이 있는가?"}
-    B -- "없음" --> C["7단계 선택형 인터뷰"]
+    A["주제·목적 입력"] --> B{"문체 설정을 요청했는가?"}
+    B -- "예" --> C["7단계 선택형 인터뷰"]
     C --> D["선호 충돌·강도·신뢰도 확인"]
     D --> E["개인 스타일 프로필 생성"]
-    B -- "있음" --> F["프로필 로드"]
-    E --> F
+    B -- "아니오" --> F["저장된 프로필 또는 글쓰기 기본값 적용"]
+    E --> Y{"원고 작성도 요청했는가?"}
+    Y -- "예" --> F
+    Y -- "아니오" --> Z["확정 프로필 전달"]
     F --> G["글 유형과 독자 의도 판단"]
-    G --> H["always·usually 규칙으로 초안 작성"]
+    G --> R{"기존 본문 참고 대상인가?"}
+    R -- "예" --> S["실제 본문 수집·분석·공식 근거 확인"]
+    R -- "아니오" --> H["확인한 자료와 문체로 초안 작성"]
+    S --> H
     H --> I["사실·의견·불확실성 분리"]
-    I --> J["모바일 가독성·제목·CTA 점검"]
-    J --> K["사실 검증된 원고"]
+    I --> J["검색·홈판·혼합형 제목 비교·확정"]
+    J --> K["가독성과 근거를 점검한 최종 원고"]
     K --> L{"이미지 요청이 있는가?"}
     L -- "없음" --> M["텍스트 원고 완료"]
     L -- "있음" --> N["시각 비트와 이미지 슬롯 선택"]
-    N --> O["실사·창작·인포그래픽 생성과 QA"]
+    N --> V{"계획만 요청했는가?"}
+    V -- "예" --> W["슬롯·프롬프트 계획 전달"]
+    V -- "아니오" --> O["요청 수량 실제 생성·시각 QA"]
     O --> P["Manifest 기반 이미지 삽입 원고 완료"]
 ```
+
+이 흐름도는 단일 원고 작성 기준입니다. 기존 이미지 편집은 확인한 원본으로 편집하고, 제목만·문답형·시리즈·네이버 입력 요청은 [기능별 담당 스킬](./docs/skill-capabilities.md#1-어떤-스킬을-사용할까)로 연결합니다.
 
 ### 인터뷰 7단계
 
@@ -206,7 +294,7 @@ flowchart TD
 | 🧲 소제목 | 목차형보다 궁금증을 만드는 문장형 |
 | 🔍 근거 | 공식 자료와 출처를 적극 활용하고 글 마지막에 정리 |
 | ⚖️ 평가 | 장단점을 균형 있게 보여주고 선택을 강요하지 않음 |
-| 🏷️ 제목 | 호기심을 만들되 본문과 정확하게 연결 |
+| 🏷️ 제목 | 검색 주제와 읽을 이유를 구체적으로 제시. 목적별 선택, 기본 혼합형 |
 | ✅ 마무리 | 바로 활용할 수 있는 팁이나 체크리스트 |
 
 ### 규칙 우선순위
@@ -284,13 +372,60 @@ python3.11 scripts/insert_article_images.py \
 
 상세 규칙: [시각 구성 흐름](./references/visual-composition-workflow.md) · [이미지 모드](./references/image-generation-modes.md) · [Manifest v1](./references/image-slot-manifest.md)
 
+### 본문 기반 이미지 프롬프트 도우미
+
+[`build_blog_image_prompts.py`](./scripts/build_blog_image_prompts.py)는 원고와 확정된 이미지 슬롯을 읽어 장별 목적·본문 문맥·슬라이드 제목·요점·제작 기준을 조립합니다. `sns_content_writer`의 계산을 이식했으며 실행 시 원본 프로젝트나 브라우저가 필요하지 않습니다. 입력/출력과 원본 대비 차이는 [프롬프트 계약](./references/blog-image-prompt-contract.md)에 정리되어 있습니다.
+
+| 표현 유형 | 동작 |
+|---|---|
+| `standard` | 소제목의 상황에 맞춰 이미 정한 실사·삽화·도해 연출을 유지 |
+| `info-slide` | 명시적으로 요청한 정보 슬라이드. 본문 근거에서 제목·요점을 추출하고 4:5·권장 1080×1350을 지시 |
+| `mixed` | 대표는 일반 이미지, 본문은 정보 슬라이드 |
+
+한국어가 기본이며 `language: en`은 원본의 영문 빌더를 사용합니다. 요청 장수는 기존 슬롯의 앞 N개를 선택하고 본문을 N개로 다시 요약·분배하지 않습니다. 명시 슬롯의 ID·순서와 시리즈 최소/목표 계약은 유지합니다. 부족한 슬롯·참고 파일·원고 버전 변경은 진단으로 보고합니다.
+
+다음 예시는 짧은 시험 원고로 **프롬프트 계획만** 확인합니다.
+
+```bash
+python3.11 -B scripts/build_blog_image_prompts.py \
+  --input tests/fixtures/blog-image-prompts/request-mixed.json \
+  --project-root "$PWD" --check
+```
+
+계획을 저장하려면 `--check` 대신 `--output output/image-plan-01.json`을 지정합니다. 기존 출력 파일은 교체하지 않으므로 새 이름을 사용합니다. 실제 생성 도구에는 각 항목의 `prompt`와 확인된 참고 파일을 전달합니다. 생성·시각 QA가 끝난 후 manifest v1의 기존 `prompt` 필드에는 한 줄 보관값 `manifest_prompt`를 넣고 실제 파일 경로·캡션·승인 상태를 채웁니다. 계획의 `planned`는 생성·승인·시리즈 입력 준비를 의미하지 않습니다.
+
+완성 요청에는 `--operation generate-and-compose`를 명시합니다. `design_slots`이면 요청 수량의 구체 장면을 설계해 다시 검사하고, `generate_images`이면 현재 이미지 도구로 바로 이어갑니다. 실제 승인 파일과 이미지 포함 원고가 만들어진 후 원본 요청 JSON으로 최종 패키지를 대조할 수 있습니다.
+
+```bash
+python3.11 -B scripts/build_blog_image_prompts.py \
+  --input drafts/image-request.json --project-root "$PWD" \
+  --operation generate-and-compose \
+  --manifest drafts/image-manifest.json \
+  --composed-article drafts/article-with-images.md --check
+```
+
+요청 5장에 최종 이미지가 4장 또는 6장인 경우, 중복 파일·미승인·잘못된 비율·유형/프롬프트/본문 불일치가 있으면 `incomplete`입니다. `package_verified`는 실제 파일과 합성을 대조한 결과이며 모델 실행과 눈으로 확인한 시각 QA는 별도 근거가 필요합니다. 프롬프트 준비에서 멈추거나 수량 미달을 이미지 포함 완성으로 보고하지 않습니다.
+
+```text
+SKILL.md의 시각 모드를 적용해 drafts/article.md에 필요한 이미지 슬롯을 먼저 설계해줘.
+각 슬롯을 해당 문단의 구체적인 상황과 설명 목적에 연결하고,
+공통 프롬프트 도우미로 혼합형 3장의 계획과 프롬프트만 만들어줘.
+이미지 생성은 하지 마.
+```
+
+```text
+SKILL.md의 시각 모드를 적용해 drafts/article.md의 소재 비교 문단을
+한국어 정보 슬라이드 1장으로 만들어줘.
+본문에서 제목과 요점을 추출하고 실제 생성 결과의 문구·비율·가독성을 검수해줘.
+```
+
 ## 💬 사용 예시
 
 <a id="skill-representative-prompts"></a>
 
 ### 스킬별 대표 프롬프트
 
-아래 예시는 그대로 복사한 뒤 대괄호 안의 값만 작업에 맞게 바꾸면 됩니다. `SmartEditor` 관련 스킬도 별도 요청이 없으면 공개·예약 발행하지 않습니다.
+아래 예시는 설치·등록된 환경의 `$스킬명` 호출입니다. 저장소 직접 사용에서는 해당 `SKILL.md`를 읽어 적용하도록 요청하고 대괄호 안의 값만 바꾸면 됩니다. SmartEditor 관련 스킬의 실행 범위는 임시저장·재검증까지이며 공개·예약 발행은 수행하지 않습니다. 단일 글의 참고 수·제목 유형·이미지 장수별 예제는 [기능별 사용 가이드](./docs/skill-capabilities.md)를 참고하세요.
 
 #### 1. `naver-blog-style` — 저장된 문체로 단일 글 작성
 
@@ -414,7 +549,19 @@ $naver-series-workflow
 - 이번 요청에서는 SmartEditor 입력과 발행을 하지 않기
 ```
 
-#### 7. 전체 워크플로 — 최근 키워드 선정부터 글 3편 임시저장까지
+#### 7. `naver-blog-wizard` — 한 질문씩 글·이미지 옵션 선택
+
+```text
+$naver-blog-wizard
+
+주제는 일본 여행 전 준비할 결제수단이야.
+대상 독자·글 유형·말투·이미지 옵션을 한 질문씩 선택하게 해줘.
+이미 답한 옵션은 유지하고, 원고 검토부터 이미지 포함 완성까지 진행해줘.
+```
+
+문답 중에는 `이미지 유형만 카드뉴스형으로 바꿔줘`, `잠시 중단해줘`, `이전 세션을 이어서 진행해줘`처럼 범위를 지정할 수 있습니다. 문체 인터뷰·시리즈 작성·SmartEditor 입력은 각각 별도 스킬의 범위입니다.
+
+#### 8. 전체 워크플로 — 최근 키워드 선정부터 글 3편 임시저장까지
 
 아래 프롬프트는 `naver-creator-keyword-recommender` → `naver-title` → `naver-blog-style` 또는 `seo-series-writer` → `naver-series-workflow` → `naver-smarteditor-drafter`를 하나의 안전한 작업으로 연결하는 대표 예시입니다.
 
@@ -484,7 +631,7 @@ SmartEditor 규칙:
 저장된 네이버 블로그 스타일 프로필을 로드해줘.
 주제는 "오후 8시까지 가능한 국내 주식 거래"야.
 최신 공식 자료를 확인하고 사실과 의견을 구분해 작성해줘.
-제목은 호기심을 만들되 과장하지 말고, 마지막에는 실용 체크리스트를 넣어줘.
+제목은 검색 주제와 읽을 이유를 구체적으로 드러내고 과장하지 말아줘. 마지막에는 실용 체크리스트를 넣어줘.
 ```
 
 </details>
@@ -635,10 +782,23 @@ $naver-creator-keyword-recommender
 
 | 호출 방법 | 기본 출력 |
 |---|---|
-| `$naver-title` | 요청한 유형과 개수에 맞춰 생성 |
+| `$naver-title` | 일반 미지정은 검색형 5개·홈판형 5개·혼합형 3개. 명시 조건 우선 |
 | `네이버 제목 [주제어]` | 검색형 4개·홈판형 3개·혼합형 3개·최종 추천 |
 | `네이버 타이틀 [주제어]` | 검색형 4개·홈판형 3개·혼합형 3개·최종 추천 |
 | `네이버 주제 [주제어]` | 검색형 4개·홈판형 3개·혼합형 3개·최종 추천 |
+
+**네이버 블로그 글 작성에 연결할 때는 혼합형 제목을 기본으로 선택합니다.** 본문 초안의 근거와 독자 의도를 바탕으로 검색형·홈판형·혼합형 후보를 각각 3개씩 내부 비교하고 최종 제목 1개를 선정합니다. 사용자가 검색형이나 홈판형을 지정하면 해당 목적을 우선하며, 지정한 제목을 그대로 쓰라는 요청은 보존합니다. 독립 제목 호출의 위 기본 개수는 바꾸지 않습니다.
+
+검색형은 `대상 + 정보 범위·선택 기준`, 홈판형은 `독자 상황 + 구체적인 차이·읽을 이유`, 혼합형은 `검색 핵심어 + 추가 판단 정보`로 구성합니다. 모든 제목을 의문문으로 만들지 않으며, 제목의 숫자·순위·경험은 본문 근거와 대조합니다. 예를 들어 `돈키호테 쇼핑리스트, 인기템 담기 전에 확인할 4가지`의 숫자는 실제 본문 체크리스트 4개에서 가져오며 이미지 5장을 인기 TOP5로 바꾸지 않습니다.
+
+확정된 H1과 본문으로 이미지 슬롯·SHA·프롬프트를 계산합니다. 후보와 선정 메모는 본문에서 분리하고 후보 전체는 요청할 때만 보여줍니다. 제목 전략의 ‘혼합형’과 이미지 유형의 ‘혼합형’은 별개입니다.
+
+```text
+네이버 블로그 스킬로 돈키호테 인기 품목을 카테고리별로 정리해줘.
+제목은 혼합형으로 선정하고, 정보 슬라이드 / 카드뉴스형 5장으로 완성해줘.
+```
+
+검색 목적을 우선하려면 `제목은 검색형으로`, 홈피드에서 읽을 이유를 강조하려면 `제목은 홈판형으로`를 지정합니다. 기존 글에 이미지만 추가하면 제목·본문을 보존하고, `검색형 제목 2개만`처럼 제목만 요청하면 원고·이미지 작업으로 이어가지 않습니다. 자세한 연결 순서는 [루트 제목 선정](./SKILL.md#selecting-a-post-title)과 [주제 완성 흐름](./references/topic-image-completion-workflow.md)을 따릅니다.
 
 ```text
 네이버 제목 여수밤바다 브런치 카페 무료주차장
@@ -904,23 +1064,40 @@ python3.11 skills/naver-series-workflow/scripts/prepare_series.py status \
 
 ## 📂 파일 구조
 
+아래는 주요 파일입니다. 최신 기능별 진입점은 [사용 가이드](./docs/skill-capabilities.md)를 참고하세요.
+
 ```text
 📦 naver_blog_skill
 ├── 📄 README.md
 ├── 🧠 SKILL.md
 ├── 🙈 .gitignore
+├── 📁 agents
+│   └── ⚙️ openai.yaml
 ├── 📁 docs
+│   ├── 📖 skill-capabilities.md
 │   └── 👤 naver-blog-style-profile.md
+├── 📁 dev-plan                       # Phase별 개발 계획과 검증 기록
 ├── 📁 references
 │   ├── ❓ choice-question-bank.md
 │   ├── 🎨 visual-composition-workflow.md
 │   ├── 🖼️ image-generation-modes.md
+│   ├── 🧩 blog-image-prompt-contract.md
+│   ├── ✅ topic-image-completion-workflow.md
+│   ├── 📖 blog-research-workflow.md
+│   ├── 🧾 blog-research-contract.md
 │   └── 🧾 image-slot-manifest.md
 ├── 📁 scripts
+│   ├── 🔧 build_blog_image_prompts.py
+│   ├── 🔧 build_blog_research_context.py
 │   └── 🔧 insert_article_images.py
 ├── 📁 tests
 │   ├── 🧪 test_insert_article_images.py
+│   ├── 🧪 test_build_blog_image_prompts.py
+│   ├── 🧪 test_build_blog_research_context.py
+│   ├── 🧪 test_wizard_session.py
+│   ├── 🧪 test_wizard_artifacts.py
 │   ├── 🧪 test_build_naver_post.py
+│   ├── 🧪 test_build_naver_post_regressions.py
 │   ├── 🧪 test_asset_integrity.py
 │   ├── 🧪 test_execution_state.py
 │   ├── 🧪 test_prepare_series.py
@@ -933,6 +1110,17 @@ python3.11 skills/naver-series-workflow/scripts/prepare_series.py status \
 │   ├── 🧪 test_blog_home_title_analyzer.py
 │   └── 📁 fixtures
 ├── 📁 skills
+│   ├── 📁 naver-blog-wizard
+│   │   ├── 🧠 SKILL.md
+│   │   ├── 📁 agents
+│   │   │   └── ⚙️ openai.yaml
+│   │   ├── 📁 scripts
+│   │   │   ├── 🔧 wizard_session.py
+│   │   │   └── 🔧 wizard_artifacts.py
+│   │   └── 📁 references
+│   │       ├── 💬 question-flow.md
+│   │       ├── 🧾 session-contract.md
+│   │       └── 📝 single-post-writing.md
 │   ├── 📁 naver-creator-keyword-recommender
 │   │   ├── 🧠 SKILL.md
 │   │   ├── 📁 agents
@@ -966,6 +1154,7 @@ python3.11 skills/naver-series-workflow/scripts/prepare_series.py status \
 │   │       ├── 📝 article-template.md
 │   │       ├── 🛡️ quality-policy.md
 │   │       ├── ✅ evaluation-rubric.md
+│   │       ├── 📦 file-output.md
 │   │       └── 📚 examples.md
 │   ├── 📁 naver-smarteditor-drafter
 │   │   ├── 🧠 SKILL.md
@@ -990,21 +1179,33 @@ python3.11 skills/naver-series-workflow/scripts/prepare_series.py status \
 │       │   └── 📏 content_metrics.py
 │       └── 📁 references
 │           ├── 🧾 series-contract.md
+│           ├── 🎨 contextual-image-direction.md
 │           ├── 🖼️ visual-quality-gate.md
 │           └── 🔄 workflow-runbook.md
-└── 📁 assets                         # 로컬 생성 이미지, Git 추적 제외
+├── 📁 assets                         # 로컬 생성 이미지, Git 추적 제외
+└── 📁 outputs                        # 로컬 전달 패키지·실행 이력, Git 추적 제외
 ```
 
 | 파일 | 역할 |
 |---|---|
-| [`SKILL.md`](./SKILL.md) | 인터뷰, 스타일 추출, 프로필 적용, 네이버 가드레일을 정의하는 핵심 스킬 |
+| [`SKILL.md`](./SKILL.md) | 단일 글 작성·재작성, 본문 참고, 제목·이미지 연결과 문체 인터뷰를 정의하는 핵심 스킬 |
+| [`docs/skill-capabilities.md`](./docs/skill-capabilities.md) | 현재 7개 스킬의 기능·기본값·사용 예제·검증 범위 |
 | [`docs/naver-blog-style-profile.md`](./docs/naver-blog-style-profile.md) | 확인된 개인 문체와 작성 규칙을 저장하는 재사용 프로필 |
 | [`references/choice-question-bank.md`](./references/choice-question-bank.md) | 7개 차원의 선택형 질문과 샘플 보정 문항 |
 | [`references/visual-composition-workflow.md`](./references/visual-composition-workflow.md) | 이미지 위치 선정, 생성, QA, 삽입 순서 |
 | [`references/image-generation-modes.md`](./references/image-generation-modes.md) | 실사·창작·인포그래픽·UI 개념 이미지의 선택 기준 |
 | [`references/image-slot-manifest.md`](./references/image-slot-manifest.md) | JSON v1 슬롯 계약, 마커 문법, 검증 실패 조건 |
+| [`references/blog-research-workflow.md`](./references/blog-research-workflow.md) | 실제 블로그 본문 수집·분석·공식 근거 확인과 단일 글 연결 |
+| [`references/blog-research-contract.md`](./references/blog-research-contract.md) | 참고 수·검색 경로·수집 상태·문맥 길이와 로컬 CLI 계약 |
+| [`references/topic-image-completion-workflow.md`](./references/topic-image-completion-workflow.md) | 주제·유형·N장 요청을 실제 생성·QA·본문 삽입까지 연결하는 흐름 |
+| [`references/blog-image-prompt-contract.md`](./references/blog-image-prompt-contract.md) | 본문 기반 슬롯·제목·요점·이미지 유형·프롬프트와 완료 검사 계약 |
+| [`scripts/build_blog_research_context.py`](./scripts/build_blog_research_context.py) | 관찰 JSON과 본문 문맥을 검증하는 로컬 도우미. 브라우저 수집은 수행하지 않음 |
+| [`scripts/build_blog_image_prompts.py`](./scripts/build_blog_image_prompts.py) | 슬롯·본문 근거·장별 프롬프트 구성과 완료 패키지 검증. 실제 생성·승인은 수행하지 않음 |
 | [`scripts/insert_article_images.py`](./scripts/insert_article_images.py) | 승인된 이미지를 Markdown 슬롯에 삽입하는 비파괴 CLI |
 | [`tests/test_insert_article_images.py`](./tests/test_insert_article_images.py) | 경로·슬롯·특수문자·비덮어쓰기 단위 테스트 |
+| [`skills/naver-blog-wizard/`](./skills/naver-blog-wizard/) | 단일 글·이미지 문답과 선택 변경·중단·재개를 처리하는 스킬 |
+| [`skills/naver-blog-wizard/scripts/wizard_session.py`](./skills/naver-blog-wizard/scripts/wizard_session.py) | 질문·확정 옵션·원고 선택·상태 전이·재개 관리 |
+| [`skills/naver-blog-wizard/scripts/wizard_artifacts.py`](./skills/naver-blog-wizard/scripts/wizard_artifacts.py) | 공통 이미지 도우미를 재사용하는 파일·계획·이미지·합성 검증 |
 | [`skills/naver-creator-keyword-recommender/`](./skills/naver-creator-keyword-recommender/) | 최근·직전 검색 유입을 비교하고 요청 시 블로그 홈 제목 구조를 별도로 보완하는 독립 스킬 |
 | [`skills/naver-creator-keyword-recommender/scripts/analyze_snapshots.py`](./skills/naver-creator-keyword-recommender/scripts/analyze_snapshots.py) | 로컬 관찰 JSON을 검증하고 근거 점수·제목 패턴 집계를 생성하는 결정적 CLI |
 | [`skills/naver-creator-keyword-recommender/scripts/analyze_home_titles.py`](./skills/naver-creator-keyword-recommender/scripts/analyze_home_titles.py) | 블로그 홈 제목 스냅샷을 검증하고 원문 없는 구조·길이·민감도 집계를 생성하는 결정적 CLI |
@@ -1017,7 +1218,7 @@ python3.11 skills/naver-series-workflow/scripts/prepare_series.py status \
 | [`skills/naver-series-workflow/`](./skills/naver-series-workflow/) | 시리즈 원고·이미지 준비, 검수 게이트, SmartEditor 순차 임시저장·재개를 연결하는 총괄 스킬 |
 | [`skills/naver-series-workflow/scripts/prepare_series.py`](./skills/naver-series-workflow/scripts/prepare_series.py) | 레거시 v1과 완성형 `naver-series/v2` manifest를 검사하고 불변 준비 run과 분리된 품질 상태를 만드는 CLI |
 | [`skills/naver-series-workflow/scripts/content_metrics.py`](./skills/naver-series-workflow/scripts/content_metrics.py) | 제목·태그·출처·이미지 정보를 제외한 공개 본문 글자 수를 결정적으로 계산하는 모듈 |
-| [`.gitignore`](./.gitignore) | `.DS_Store`, 로컬 이미지와 비공개 크리에이터 어드바이저 관찰 데이터를 버전 관리에서 제외 |
+| [`.gitignore`](./.gitignore) | `.DS_Store`, 로컬 이미지·전달 패키지·SmartEditor 실행 이력과 비공개 크리에이터 어드바이저 관찰 데이터를 버전 관리에서 제외 |
 | `assets/` | 생성한 대표 이미지와 본문 이미지를 로컬에서 보관하는 폴더 |
 
 ## 🧪 프로필 적용 품질 점검
@@ -1025,7 +1226,7 @@ python3.11 skills/naver-series-workflow/scripts/prepare_series.py status \
 글을 발행하기 전에 다음 항목을 확인합니다.
 
 - [ ] 도입부가 독자의 실제 상황이나 즉각적인 질문에서 시작하는가?
-- [ ] 제목이 호기심을 만들면서 본문 내용을 정확히 반영하는가?
+- [ ] 제목이 검색 주제와 읽을 이유를 명확히 보여주며 본문과 일치하는가?
 - [ ] 문단이 모바일에서 읽기 부담스럽지 않은가?
 - [ ] 다른 글에서 놓치기 쉬운 관찰이나 차이가 한 가지 이상 있는가?
 - [ ] 공식 정보, 확인된 사실, 개인 의견이 구분되어 있는가?
@@ -1079,6 +1280,22 @@ python3.11 skills/naver-series-workflow/scripts/prepare_series.py status \
 - 사실 확인이 필요한 정보를 추측만으로 단정하지 않습니다.
 
 ## ❓ FAQ
+
+### 주제만 넣으면 이미지 5장도 생성되나요?
+
+글 작성만 요청하면 이미지 생성은 생략합니다. `이미지 포함해서 완성해줘`는 단일 글에서 장수 미지정 시 표지 포함 총 5장을 생성·검수·삽입합니다. `카드뉴스형 5장`처럼 유형과 장수를 지정하면 그 조건을 적용합니다. `프롬프트만`은 계획에서 끝납니다.
+
+### 참고 글 5개와 이미지 5장은 같은 조건인가요?
+
+아닙니다. 참고 본문 수·이미지 장수·제목 후보 수는 독립됩니다. `기존 글 3개를 참고해서 카드뉴스 5장으로 완성`을 각각 3개 참고와 5장 이미지로 처리합니다. 기본 본문 참고의 적용 대상과 제외 경로는 [사용 가이드](./docs/skill-capabilities.md#4-기존-네이버-블로그-본문-참고)에 정리했습니다.
+
+### 제목의 혼합형과 이미지의 혼합형은 같은 의미인가요?
+
+제목의 혼합형은 검색 핵심어와 클릭할 이유를 결합하는 전략입니다. 이미지의 혼합형은 일반 표지 1장과 정보 슬라이드 N−1장입니다. `제목은 혼합형, 이미지는 카드뉴스형 5장`이면 표지를 포함한 모든 이미지가 정보 슬라이드입니다.
+
+### 저장소를 받으면 모든 스킬이 자동 등록되나요?
+
+아닙니다. 저장소 직접 사용에서는 담당 SKILL.md를 읽어 적용하도록 요청합니다. `$스킬명` 호출은 설치·등록된 환경 기준이며, 전역 등록과 자동 스킬 선택은 별도로 확인해야 합니다.
 
 ### 프로필이 있으면 인터뷰를 다시 해야 하나요?
 
@@ -1141,7 +1358,7 @@ git push origin feature/your-change
 - [ ] 프로필 변경 이력과 버전 관리 방식 추가
 - [ ] 샘플 원고 기반 문장 리듬 비교 리포트
 - [ ] 발행 전 자동 체크리스트 템플릿
-- [ ] 제목 후보와 본문 일치도 점검 방식
+- [x] [검색·홈판·혼합형 제목 후보와 본문 일치도 검수](./skills/naver-title/SKILL.md)
 - [x] 이미지 삽입 위치와 캡션 가이드
 
 > 확장 아이디어는 현재 구현을 보장하는 로드맵이 아니라 향후 검토 가능한 제안 목록입니다.

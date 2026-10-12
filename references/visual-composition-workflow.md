@@ -8,10 +8,13 @@ Read this reference only when the user explicitly requests image planning, image
 |---|---|---|
 | “이미지 위치와 아이디어만 제안해줘” | `plan-only` | Slot plan, prompts, alt text, captions; no generation |
 | “대표 이미지와 본문 이미지를 만들어 넣어줘” | `generate-and-compose` | Generated files, manifest, QA, composed Markdown |
+| Topic + “정보 슬라이드 / 카드뉴스형 5장으로 네이버 블로그 글을 완성해줘” | `generate-and-compose` | Write article, design 5 slots, generate/QA/insert 5 slides including the cover |
 | “이 사진 배경만 바꿔줘” | `edit-existing` | Preserve the target image and use an edit flow |
 | No explicit image request | Text-only | Do not create a visual plan or call image generation |
 
 Do not infer permission to generate images from an ordinary writing request. Do not publish to Naver or operate a logged-in editor unless the user separately requests and authorizes that action.
+
+For a topic with image type/count and a completion request, follow [the topic completion workflow](topic-image-completion-workflow.md). Prepare the article and internal request files yourself. The request already includes generation/insertion; do not stop at prompts or ask the same authorization again. Planning-only and no-image constraints take priority.
 
 ## 2. Lock the article before visual planning
 
@@ -42,6 +45,8 @@ Do not add a slot when the image would merely repeat the heading, duplicate a ne
 ## 4. Select slots
 
 For a v2 complete package, select at least three distinct slots: exactly one cover first and at least two inline slots. Use the primary writing profile's target count when the user did not specify a count; expert defaults to five. Text-only and optional-image requests do not inherit this production floor.
+
+For a single image-inclusive completion, use the explicit N or default total five. Design exactly that many useful slots (five means one cover plus four inline), independently of heading count. If the helper reports a shortage, return to scene design and substantive article work. Preserve the source compatibility calculation; it is not permission to silently reduce the user's N. Keep the existing series minimum/style-target contracts for series requests.
 
 ### Cover slot
 
@@ -92,6 +97,17 @@ For a multi-article request, compare the proposed briefs before generating. If u
 ## 6. Choose the visual mode and write prompts
 
 Read [`image-generation-modes.md`](image-generation-modes.md). Choose the mode separately for each slot while preserving the shared brief.
+
+Use the [shared prompt helper contract](blog-image-prompt-contract.md) when selecting existing prompt entries, extracting slide title/key points from the article, or assembling one-image prompts. Run the repository's `scripts/build_blog_image_prompts.py` with the finalized article and the selected ordered slots. The helper reuses the canonical article parser, preserves full body/focus context, and reports missing slots or references without rewriting the article. The request count selects entries; it does not redistribute the manuscript into that many sections.
+
+Keep `presentation` separate from the existing generation `mode`: `standard` keeps the chosen scene/medium, explicit `info-slide` uses article-grounded information-slide wording and `infographic-diagram`, and `mixed` uses a standard cover plus information slides inline. Do not impose slides on every topic. Korean is the default prompt language; the conditional English builder does not impose Korean slide copy. User-selected presentation and contextual scene direction work together.
+
+```bash
+python3.11 -B scripts/build_blog_image_prompts.py \
+  --input drafts/image-request.json --project-root "$PWD" --check
+```
+
+`plan-only` stops at this plan. For generation, pass each prompt and any verified reference file to the current image tool, and inspect the returned files. For `edit-existing`, inspect and pass the actual original image to its editing flow. A verified local reference in a plan is not proof that the tool received an attachment. The helper's `planned` status and requested dimensions are not visual QA or approval; only actual generated and inspected assets enter manifest v1. Its fallback candidates still need the scene/section-fit review in steps 5 and 8.
 
 Each prompt should state:
 
@@ -152,7 +168,7 @@ For UI instructions, official forms, branded products, or evidence images, use a
 
 ## 10. Compose the article
 
-Create the JSON v1 manifest described in [`image-slot-manifest.md`](image-slot-manifest.md). Run the insertion CLI from the project root after every referenced file exists and has `approved` status.
+Create the JSON v1 manifest described in [`image-slot-manifest.md`](image-slot-manifest.md). If the shared helper supplied a multi-line generation `prompt`, record its lossless one-line `manifest_prompt` in the manifest's existing `prompt` field; pass the actual `prompt` to the image tool. Run the insertion CLI from the project root after every referenced file exists and has `approved` status.
 
 ```bash
 python3.11 scripts/insert_article_images.py \
@@ -162,6 +178,18 @@ python3.11 scripts/insert_article_images.py \
 ```
 
 The original article remains unchanged. Report the composed article path, all final image paths, and any unresolved slot.
+
+For an image-inclusive completion, verify the actual package using the original internal request:
+
+```bash
+python3.11 -B scripts/build_blog_image_prompts.py \
+  --input drafts/image-request.json --project-root "$PWD" \
+  --operation generate-and-compose \
+  --manifest drafts/image-manifest.json \
+  --composed-article drafts/post-with-images.md --check
+```
+
+This rechecks exact count, decoded unique files, slide ratio, ordered roles/presentation/prompt correspondence, and canonical composition. `package_verified` does not replace the actual generation call or visual QA. Partial/extra/missing images and mismatched content remain incomplete.
 
 ## Decision examples
 

@@ -1,0 +1,7 @@
+{
+  "schema": "naver-blog-image-request/v1",
+  "article": {"path":"tests/fixtures/blog-image-prompts/provided.txt","title":"책상 정리 순서","source_type":"provided-article"},
+  "presentation": "mixed",
+  "requested_count": 2,
+  "article_type": "howto"
+}

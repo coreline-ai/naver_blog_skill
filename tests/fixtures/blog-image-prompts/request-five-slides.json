@@ -1,0 +1,13 @@
+{
+  "schema": "naver-blog-image-request/v1",
+  "article": {"path":"tests/fixtures/blog-image-prompts/article-five-slides.md"},
+  "presentation": "info-slide",
+  "requested_count": 5,
+  "slots": [
+    {"id":"cover","role":"cover","purpose":"검증용 글의 분류와 근거 범위 안내","prompt":"확인된 정보의 범위를 안내하는 대표 정보 슬라이드. 실제 판매 순위나 구매 비율을 시각화하지 않는다.","mode":"infographic-diagram","heading_hint":"","placement":"H1 바로 아래","alt":"분류와 근거 범위"},
+    {"id":"food","role":"inline","purpose":"식품 표시와 용도 구분","prompt":"식품의 표시와 용도를 구분해서 보는 장면을 중심으로 항목 간 관계를 표현. 실제 브랜드나 순위는 넣지 않는다.","mode":"infographic-diagram","heading_hint":"식품을 구분할 때 확인할 항목","placement":"식품 문단 뒤","alt":"식품 표시 확인"},
+    {"id":"beauty","role":"inline","purpose":"뷰티 제품 표시 기준","prompt":"제품 표시를 읽고 용도와 조건을 구분하는 근접 장면. 가상의 효능 수치는 넣지 않는다.","mode":"infographic-diagram","heading_hint":"뷰티 제품의 표시를 읽는 기준","placement":"뷰티 문단 뒤","alt":"제품 표시 기준"},
+    {"id":"daily","role":"inline","purpose":"생활용품의 사용 맥락","prompt":"생활용품과 수납 위치의 공간 관계를 보여주는 정보 슬라이드. 가상의 실측값은 넣지 않는다.","mode":"infographic-diagram","heading_hint":"생활용품의 크기와 용도","placement":"생활용품 문단 뒤","alt":"생활용품 사용 맥락"},
+    {"id":"check","role":"inline","purpose":"구매 전 정보 확인 순서","prompt":"확인한 정보와 미확인 정보를 구분하는 판단 순서를 보여주며 이전 카드의 상품 배치를 복제하지 않는다.","mode":"infographic-diagram","heading_hint":"구매 전 정보를 다시 확인하는 순서","placement":"확인 문단 뒤","alt":"구매 전 정보 확인"}
+  ]
+}
