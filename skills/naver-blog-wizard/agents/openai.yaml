@@ -1,0 +1,4 @@
+interface:
+  display_name: "네이버 블로그 문답형 글·이미지"
+  short_description: "네이버 단일 글과 이미지 옵션을 하나씩 선택하고 검수·합성하는 스킬"
+  default_prompt: "$naver-blog-wizard 네이버 블로그 글쓰기와 이미지 옵션을 한 번에 하나씩 질문하면서 진행해줘."

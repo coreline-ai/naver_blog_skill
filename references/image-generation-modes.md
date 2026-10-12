@@ -15,6 +15,14 @@ Choose each mode from the section's actual informational or emotional job, using
 
 Use an image-editing flow rather than these generate modes when the user supplied a target image and asked to preserve or change part of it.
 
+## Explicit presentation choices
+
+The [shared prompt helper](blog-image-prompt-contract.md) ports the original app's `standard`, `info-slide`, and `mixed` presentation choices. These are prompt plans, not new manifest modes. `standard` preserves contextual photography/illustration/diagram choices; `info-slide` is an explicit information-slide request mapped to `infographic-diagram`; `mixed` uses the explicit cover role for standard and inline roles for slides.
+
+An explicit Korean information slide may contain the extracted article-grounded title (up to 34 UTF-16 units) and 2–3 key points (up to 52 each) in a 4:5, recommended 1080×1350 composition. The source extraction is deterministic sentence selection, not semantic summarization. Do not manufacture extra key points when the source is insufficient. Comparison, steps/checklist, review, and default layouts follow the selected article type/profile; adapt the scene and information arrangement to the specific topic. English prompting is conditional and does not force Korean text into English images.
+
+Actual Korean text, factual correspondence, ratio, and mobile readability still require visual QA. Use a code-native diagram or keep exact facts in article text when raster text cannot be made accurate; this helper adds no text renderer or OCR. General diagrams retain their existing minimal-text guidance below.
+
 ## Shared visual brief
 
 Define these values once per article and reuse them across prompts:

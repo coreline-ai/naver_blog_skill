@@ -14,6 +14,8 @@ description: SEO 시리즈 원고와 이미지를 본문 3,000자·이미지 포
 3. 저장소 직접 사용이면 이 SKILL.md의 실제 위치에서 sibling 두 스킬을 찾는다. 원고 작성이 필요할 때만 writer를 호출하고, drafter는 해당 모드의 지침을 읽는다. 전역에 설치됐다고 추측하거나 누락 스킬을 자동 설치하지 않는다.
 4. Python 3.11+, 이미지 검사 시 Pillow, UI 관찰 검사 시 Node가 필요하다. 현재 런타임·도구 가용성을 확인한다. 의존성 미충족은 명시적으로 멈추고 자동 설치하지 않는다.
 
+이미지 유형·N장·완성을 함께 요청한 시리즈는 회차별 작성→N슬롯 설계→실제 생성/QA→삽입까지 수행한다. [주제 이미지 완성 흐름](../../references/topic-image-completion-workflow.md)을 회차별로 적용하고 `카드뉴스형/정보 슬라이드`는 cover 포함 전부 info-slide로 연결한다. 명시 N은 정확한 완료 수량이며 무슬롯 helper의 소제목 상한으로 줄이지 않는다. v2 required의 최소 3장과 충돌하는 요청은 조용히 변경하지 않고 계약 불일치를 보고한다. N>=3이면 기존 manifest의 최소/목표에 N을 반영하고 paired 완료 검사로 정확한 N을 대조한다. 미지정 장수는 기존 primary_style 목표를 유지한다. 이미지 작업 완료가 SmartEditor 실행 요청을 뜻하지는 않는다.
+
 ## 전체 워크플로 순서
 
 전체 작업은 **자료 확인 → 프로필 선택 → 3,000자 이상 원고 보강·사실 검수 → 이미지 슬롯 설계 → 이미지 생성·시각 QA → 네이버 정본 준비 → SmartEditor 순차 임시저장** 순서다. “이미지 먼저”는 빈 이미지부터 만드는 뜻이 아니라, 안정된 원고를 기준으로 이미지를 만든 뒤 SmartEditor를 열라는 뜻으로 해석한다. 이미지가 필수인 실행에서 최소 3개의 승인된 고유 이미지와 `cover 1+inline 2`를 갖추기 전에는 SmartEditor에 저장하지 않는다.
@@ -34,7 +36,7 @@ description: SEO 시리즈 원고와 이미지를 본문 3,000자·이미지 포
 1. [시리즈 계약](references/series-contract.md)을 읽고 신규 완성형은 `naver-series/v2` manifest를 만든다. v1은 기존 입력 호환용이며 전문가 품질 완료로 승격하지 않는다. 기존 파일이 있으면 재사용하고 누락 회차를 임의로 창작하지 않는다.
 2. 본문 전용 원고, 편집 메모, review를 별도 파일로 준비한다. writer 전체 대화 응답에서 정규식으로 일부 문구를 삭제해 본문을 추출하지 않는다. 불분명한 기존 입력은 경계를 확인한다.
 3. 이미 배치된 이미지는 순서를 유지한다. 새 이미지가 요청된 경우 현재 이미지 도구 지침, [상황별 이미지 연출](references/contextual-image-direction.md), [시각 품질 게이트](references/visual-quality-gate.md), 루트의 시각 구성 런북을 읽고 최종 원고에서 시각 비트를 추출한 다음 생성·검수한다. 제목·문맥·상황·분위기·설명 목적에 따라 회차별 매체·장면·구도를 새로 선택하고, 생성 전 계획과 생성 후 전체 이미지 묶음을 비교한다. 배경·색만 바꾼 반복 템플릿은 차별화로 인정하지 않으며, 사용자가 요청한 시리즈 공통 스타일은 존중한다. v2 `visual_mode: required`에서는 최소 3장, cover 1장, inline 2장, 고유 파일·승인·관련성을 모두 검사한다. 스타일 목표 미달은 별도 표시한다.
-4. 이미지 슬롯을 쓸 때 기존 저장소 `scripts/insert_article_images.py`를 재사용한다. prepare CLI는 검증된 슬롯만 메모리에서 합성하며 원고에 쓰지 않는다.
+4. 확정된 회차별 슬롯의 선정·본문 근거/제목/요점 추출·장별 프롬프트 조립에는 [공통 이미지 프롬프트 계약](../../references/blog-image-prompt-contract.md)과 실제 저장소 루트의 `scripts/build_blog_image_prompts.py`를 사용한다. 두 스킬의 계산을 복제하지 않는다. 명시적 `info-slide`/`mixed`를 표현 유형으로 전달하되 기존 manifest mode와 구분한다. 시리즈 요구 수량·primary_style을 전달하고 부족 진단은 유용한 장면 계획으로 보완한다. 슬롯 없는 fallback을 자동 승인하지 않는다. `plan-only`는 계획에서 끝내며 생성·편집은 현재 이미지 도구로 실제 수행하고 시각 QA 후 manifest v1을 만든다. 도우미의 planned를 visual_ready로 취급하지 않는다. 이미지 슬롯 합성은 기존 저장소 `scripts/insert_article_images.py`를 재사용한다. prepare CLI는 검증된 슬롯만 메모리에서 합성하며 원고에 쓰지 않는다.
 5. `scripts/prepare_series.py prepare`를 실행한다. 처음에는 review_pending이어도 정본·revision·검수 템플릿이 출력된다. 검토자가 실제 본문·이미지·근거를 검수한 뒤 review를 작성하고 **새 run-id**로 다시 준비한다. `question_resolution`, `practical_specificity`, `source_integrity`, `title_body_match`를 포함한 템플릿의 pending을 일괄 passed로 바꾸지 않는다.
 6. 요청한 모든 회차가 `structure_ready`, `length_ready`, `editorial_ready`, `visual_ready`를 통과해야 `draft_input_ready`와 준비 queue가 생긴다. manifest의 queue/ready는 업로드 승인이나 실제 저장 증거가 아니다. prepare에서는 여기서 끝낸다.
 

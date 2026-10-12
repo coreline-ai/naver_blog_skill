@@ -1,0 +1,9 @@
+{
+  "schema": "naver-blog-image-request/v1",
+  "article": {"path": "tests/fixtures/blog-image-prompts/article.md"},
+  "presentation": "info-slide",
+  "requested_count": 1,
+  "slots": [
+    {"id":"material","role":"inline","purpose":"원단과 마감의 확인 항목","prompt":"원단 표면과 봉제·지퍼를 살펴보는 구체 장면을 바탕으로 핵심 확인 항목을 읽기 쉽게 배치.","mode":"infographic-diagram","heading_hint":"소재를 가까이 보면 무엇이 보일까요?","placement":"소재 설명 뒤","alt":"소재 확인 정보 슬라이드"}
+  ]
+}

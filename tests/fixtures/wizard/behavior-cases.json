@@ -1,0 +1,11 @@
+{
+  "scope": "canonical options / CLI and state replay; not a natural-language routing or live image-model evaluation",
+  "cases": [
+    {"id":"new-dialog","request":"네이버 블로그 글쓰기 옵션을 하나씩 질문해줘","initial":{},"expected_question":"task_mode"},
+    {"id":"partial-options","request":"식물 관리 주제로 친근하게 글만 써줘. 남은 옵션은 질문해줘","initial":{"task_mode":"new","topic":"식물 관리","tone":"friendly","image_action":"none"},"expected_question":"audience"},
+    {"id":"one-slide","request":"이 원고는 그대로 쓰고 정보 슬라이드 1장을 만들어줘","count":1,"presentation":"info-slide","image_action":"generate","expected_action":"generate_image"},
+    {"id":"mixed-prompts","request":"혼합형 3장의 프롬프트만 만들어줘","count":3,"presentation":"mixed","image_action":"prompt-only","expected_kind":"complete"},
+    {"id":"own-files","request":"내 이미지 2장을 넣어 원고를 완성해줘","count":2,"presentation":"standard","image_action":"use-files","expected_kind":"complete"},
+    {"id":"resume-count","request":"중단했다가 재개하면서 이미지 개수를 5장에서 3장으로 바꿔줘","count":5,"presentation":"standard","image_action":"use-files","new_count":3,"expected_action":"design_slots"}
+  ]
+}

@@ -1,6 +1,7 @@
 .DS_Store
 assets/
 output/
+/outputs/
 runs/
 __pycache__/
 *.pyc

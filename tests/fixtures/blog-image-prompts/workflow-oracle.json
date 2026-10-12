@@ -1,0 +1,103 @@
+{
+  "source_commit": "ab4c700",
+  "source_file": "extension-local/auto-draft-workflow.js",
+  "sha256": "a41791cbae74edc023d051c054c7f2d10270a0a114b11ce3654f934d1f8ccf1a",
+  "cases": [
+    {
+      "input": {
+        "name": "five-complete",
+        "requested": 5,
+        "generated": 5,
+        "failures": []
+      },
+      "expected": {
+        "status": "complete",
+        "code": null,
+        "calls": [
+          "prepare",
+          "draft",
+          "wait:3000",
+          "images",
+          "insert",
+          "save"
+        ]
+      }
+    },
+    {
+      "input": {
+        "name": "five-partial",
+        "requested": 5,
+        "generated": 4,
+        "failures": []
+      },
+      "expected": {
+        "status": "failed",
+        "code": "IMAGE_RESULT_INCOMPLETE",
+        "calls": [
+          "prepare",
+          "draft",
+          "wait:3000",
+          "images"
+        ]
+      }
+    },
+    {
+      "input": {
+        "name": "five-extra",
+        "requested": 5,
+        "generated": 6,
+        "failures": []
+      },
+      "expected": {
+        "status": "failed",
+        "code": "IMAGE_RESULT_INCOMPLETE",
+        "calls": [
+          "prepare",
+          "draft",
+          "wait:3000",
+          "images"
+        ]
+      }
+    },
+    {
+      "input": {
+        "name": "empty",
+        "requested": 0,
+        "generated": 0,
+        "failures": []
+      },
+      "expected": {
+        "status": "failed",
+        "code": "IMAGE_PLAN_EMPTY",
+        "calls": [
+          "prepare",
+          "draft",
+          "wait:3000",
+          "images"
+        ]
+      }
+    },
+    {
+      "input": {
+        "name": "failure-present",
+        "requested": 5,
+        "generated": 5,
+        "failures": [
+          {
+            "reason": "test failure"
+          }
+        ]
+      },
+      "expected": {
+        "status": "failed",
+        "code": "IMAGE_RESULT_INCOMPLETE",
+        "calls": [
+          "prepare",
+          "draft",
+          "wait:3000",
+          "images"
+        ]
+      }
+    }
+  ]
+}
