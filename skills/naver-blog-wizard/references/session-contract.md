@@ -36,6 +36,8 @@ article은 바이트 hash, plan은 원고/요청/계획 hash, asset은 slot_id·
 
 intent 이후 결과 불명은 reconcile하고 자동 재생성하지 않는다. failed는 명확한 실패만 기록한다. QA 실패는 슬롯당 한 번 보정 후 해결 선택을 기다린다.
 
+원고 없는 편집의 외부 `edit_target`은 `effect-intent` 기록 안에서 검증·사본 복사·경로 변경까지 자동 수행한다. 사본은 run_root의 `inputs/edit-original.SHA256.png|jpg|jpeg`에 원본 바이트 그대로 배타적으로 보관한다. 같은 바이트의 사본은 저장 실패 후 재시도에도 재사용하며, 기존 사본이 변경됐으면 덮어쓰지 않고 중단한다. 원본·사본 해시 대조, 정적 PNG/JPEG·20 MiB·40 MP 제한, symlink·`..` 거부를 유지한다. 상대 경로는 run_root 안에서만 해석한다. 세션 잠금/CAS가 통과한 쓰기에서만 복사하고, 원래 선택 경로는 confirmed_options의 user_text에 보존한다. `next/status/inspect`는 복사하지 않는다. 실제 편집 도구에는 intent 결과의 `effect.target.path`를 전달한다.
+
 lock은 O_EXCL/PID, 변경은 lock 내 reread/CAS/검증/temp/fsync/replace. finally 해제하며 죽은 PID 확인 시 stale lock 정리, 살아 있거나 생사 불명인 lock은 유지한다. 저장 실패는 마지막 유효 상태와 실제 파일을 대조한다.
 
 글만=확정 원고, 프롬프트만=검토 계획, 생성/내 파일=정확한 고유 N파일+시각 QA+사용 선택+package_verified. 편집만=실제 편집 결과+QA+사용 선택. package_verified로 생성/QA를 주장하지 않는다. 네이버 UI 작업 권한은 없다.

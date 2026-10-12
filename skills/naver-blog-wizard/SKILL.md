@@ -21,7 +21,7 @@ description: "네이버 단일 글 작성과 이미지 옵션을 한 번에 하�
 - use_source_article: 실제 원고 사본을 준비한다. 텍스트는 확인한 제목과 원문을 Markdown으로 저장한다. 그대로 사용하라는 원고는 승인 질문을 반복하지 않는다.
 - design_slots/revise_slot_plan/revise_slot_metadata: N개의 구체 설명 목적과 장면을 정하고 원고 사본에 독립된 `<!-- naver-image:ID -->` 줄을 넣는다. `{"slots":[...]}` JSON과 사본을 slots 기록으로 등록한다. metadata 수정에서는 지정 alt만 바꾼다. 본문·공백 변경을 삽입으로 숨기지 않는다.
 - prepare_plan: `wizard_artifacts.py prepare-plan --session FILE`을 실행해 반환 payload를 plan 기록으로 등록한다. 외부 참고 파일에 대해 change가 반환되면 reference_path를 change로 정규화한 뒤 다시 실행한다. N은 표지 포함이다. info-slide는 표지까지 슬라이드, mixed만 일반 표지다. requires_design도 payload를 plan 기록으로 등록하면 다음 작업이 design_slots로 돌아간다. 요점 부족/반복은 재설계한다.
-- generate_image/edit_image/repair_image: imagegen 스킬과 현재 이미지 도구 지침을 따른다. effect-intent를 먼저 기록하고 실제 도구 파일/결과를 effect-result로 등록한다. 참고 이미지가 있으면 plan.reference.path를 실제 도구의 참조 입력에 전달한다. 편집은 실제 원본을 확인해 전달한다. 계획만으로 생성 완료를 보고하지 않는다.
+- generate_image/edit_image/repair_image: imagegen 스킬과 현재 이미지 도구 지침을 따른다. effect-intent를 먼저 기록하고 실제 도구 파일/결과를 effect-result로 등록한다. 원고 없는 편집의 외부 edit_target은 intent 기록 시 검증된 바이트 사본으로 자동 보관되고 경로도 같은 상태 전이에서 정규화된다. 도구에는 기록 결과의 effect.target.path를 전달하며 실제 이미지를 먼저 확인한다. 참고 이미지가 있으면 plan.reference.path를 실제 도구의 참조 입력에 전달한다. 계획만으로 생성 완료를 보고하지 않는다.
 - import_image: 실제 사용자 파일을 effect-result로 등록한다. 생성 provenance를 만들지 않는다.
 - visual_review: 실제 이미지를 보고 한국어 문구·사실성·비율·모바일 가독성·문맥·묶음 차별성을 검사한다. slot_id/asset SHA/passed/관찰 notes를 등록한다. 자동 파일 검사로 시각 QA를 대체하지 않는다. 실패 슬롯은 한 번 보정 후 해결 선택을 묻는다.
 - compose_article: 승인 파일·사용 선택 이후 `wizard_artifacts.py compose --session FILE`을 실행하고 package 기록을 등록한다. 원고·N장·manifest·합성 원고를 전달한다.

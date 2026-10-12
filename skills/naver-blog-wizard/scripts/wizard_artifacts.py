@@ -100,6 +100,26 @@ def stage_input(source,root,versioned_name):
     finally: Path(name).unlink(missing_ok=True)
     return destination
 
+def stage_edit_target(s):
+    """Freeze an external original inside the run before recording an edit intent."""
+    if s['task_mode']!='edit-existing': raise BuildError('standalone edit target required')
+    root=run_root(s); source=Path(_option(s,'edit_target'))
+    if '..' in source.parts or any(p.is_symlink() for p in (source,*source.parents)):
+        raise BuildError('unsafe edit target','UNSAFE_PATH')
+    if not source.is_absolute():
+        # Relative paths remain run-local; never interpret them against cwd.
+        return inspect_asset(local_path(source,root),root)
+    if source.resolve().is_relative_to(root):
+        return inspect_asset(local_path(source,root),root)
+    original=inspect_asset(source,source.parent.resolve())
+    destination=local_path(f"inputs/edit-original.{original['sha256']}{source.suffix.lower()}",root,output=True)
+    if not destination.exists(): stage_input(source,root,destination)
+    staged=inspect_asset(destination,root)
+    if any(staged[key]!=original[key] for key in ('sha256','bytes','format','width','height')):
+        raise BuildError('staged edit copy differs from the original; preserve both files','ASSET_CHANGED')
+    verify_asset(original,source.parent.resolve())
+    return staged
+
 def _without_markers(text):
     # Only remove entire marker lines (including their own inserted newline).
     standalone=re.compile(r'^<!--\s*naver-image:[a-z0-9][a-z0-9-]*\s*-->\r?\n',re.M)
