@@ -400,7 +400,15 @@ def record_event(s,event,expected_revision):
     elif kind=='effect-intent':
         _fields(p,{'slot_id'},{'tool_prompt'})
         if action not in {'generate_image','edit_image','repair_image'} or p['slot_id']!=step['slot_id']: raise WizardError('effect not expected')
-        n['effect']=a.prepare_effect(s,step,p.get('tool_prompt'))
+        staged=None
+        if s['task_mode']=='edit-existing':
+            staged=a.stage_edit_target(n)
+            # Preserve the user's original path and origin while normalizing the
+            # executable path in this same locked/CAS state transition.
+            n['confirmed_options']['edit_target']={**n['confirmed_options']['edit_target'],'value':staged['path']}
+        n['effect']=a.prepare_effect(n,step,p.get('tool_prompt'))
+        if staged and (n['effect'].get('target')!=staged or n['effect']['binding']['reference_sha256']!=staged['sha256']):
+            raise WizardError('edit target changed while recording intent','ASSET_CHANGED')
     elif kind=='effect-result':
         _fields(p,{'slot_id'},{'path','provenance','effect_id','tool_result','failed'})
         effect=s['effect']
