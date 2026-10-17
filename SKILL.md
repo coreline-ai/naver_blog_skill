@@ -92,6 +92,8 @@ Ask for confirmation only on contradictions or high-impact preferences. If the u
 
 ## Applying the profile
 
+Before finalizing public text or computing image hashes, apply [article presentation quality](references/article-presentation-quality.md): honor the current request/profile, consolidate descriptive source links at the end by default, preserve intentional line breaks and paragraph gaps, and use actual comparison tables. Research claim/source records stay editorial; they are not instructions to repeat full URLs in public prose. Rewrites preserve originals. This gate is separate from factual and visual QA.
+
 Before writing a post:
 
 - Identify the deliverable mode and search intent, but do not let either change the core voice without permission.

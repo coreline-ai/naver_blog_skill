@@ -11,6 +11,20 @@ class WizardArtifactTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory(); self.work=Path(self.temp.name).resolve()
     def tearDown(self): self.temp.cleanup()
+    def test_article_to_drafter_preserves_table_source_and_logical_breaks(self):
+        from build_naver_post import build_post,preflight_report
+        source=self.work/'article.md'
+        source.write_text('# 합성 검증\n\n첫 줄\n다음 줄\n\n|항목|조건|\n|---|---|\n|A||\n\n## 참고자료\n\n[공식 설명](https://example.org/source)')
+        original=source.read_bytes();a.register_article(source,self.work)
+        post,warnings=build_post(source,self.work)
+        self.assertEqual(preflight_report(post,source,warnings)['status'],'passed')
+        payload=subprocess.run(['node',str(a.REPO/'skills/naver-smarteditor-drafter/scripts/clipboard_renderer.mjs')],
+            input=json.dumps({'post':post,'indices':[1]}),capture_output=True,text=True,check=True)
+        clip=json.loads(payload.stdout)
+        self.assertIn('<th>항목</th><th>조건</th>',clip['html']);self.assertIn('<td>A</td><td></td>',clip['html'])
+        self.assertEqual(post['blocks'][0]['text'],'첫 줄\n다음 줄')
+        self.assertEqual(post['blocks'][-1]['marks'][0]['url'],'https://example.org/source')
+        self.assertEqual(source.read_bytes(),original)
     def answer(self,s,v): return w.apply_answer(s,w.next_step(s)['question_id'],v,s['revision'])
     def record(self,s,kind,p): return w.record_event(s,{'type':kind,'payload':p},s['revision'])
     def plan(self,n=1,presentation='standard',action='use-files'):

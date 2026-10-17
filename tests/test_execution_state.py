@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'skills/naver-smarteditor-drafter/scripts'))
-from execution_state import ExecutionStore,ExecutionKey,StateError,CHECKS,Lease
+from execution_state import ExecutionStore,ExecutionKey,StateError,CHECKS,Lease,PRESENTATION_CHECKS,RENDER_POLICY
 
 
 class ExecutionStateTests(unittest.TestCase):
@@ -20,8 +20,8 @@ class ExecutionStateTests(unittest.TestCase):
     def tearDown(self):self.tmp.cleanup()
     def evidence(self,state):
         return {'environment':'simulation','content_revision':self.key.revision,'target_blog':self.key.target_blog,
-                'evidence_ref':'mock://fixture-1','expected':{'title':'Test'},'observed':{'title':'Test'},
-                'checks':{check:True for check in CHECKS[state]}}
+                'evidence_ref':'mock://fixture-1','expected':{'title':'Test','render_policy':RENDER_POLICY},'observed':{'title':'Test'},
+                'checks':{check:True for check in (CHECKS[state] | (PRESENTATION_CHECKS if state in ('input_verified','reopened_verified') else set()))}}
     def input_ready(self):
         self.store.start(self.key,self.lease)
         self.store.verify(self.key,self.lease,'editor_checked',self.evidence('editor_checked'))
@@ -36,12 +36,84 @@ class ExecutionStateTests(unittest.TestCase):
         self.store.finish_operation(self.key,self.lease,oid,outcome='observed',observed={'save_acknowledged':True},evidence_ref='mock://save')
         self.store.verify(self.key,self.lease,'reopened_verified',self.evidence('reopened_verified'))
         self.store.verify(self.key,self.lease,'blank_verified',self.evidence('blank_verified'))
+    def saved_ready(self):
+        oid=self.save_pending()
+        self.store.finish_operation(self.key,self.lease,oid,outcome='observed',observed={'save_acknowledged':True},evidence_ref='mock://save')
+    def tag_proof(self):
+        return {'read_only':True,'tags_observed':True,'tags':['테스트'],'settings_closed':True,
+                'content_unchanged':True,'before_content_sha256':'b'*64,'after_content_sha256':'b'*64}
+    def inspect_tags(self):
+        return self.store.begin_operation(self.key,self.lease,'inspect_saved_tags',detail={'read_only':True,'draft_reference':'Test|timestamp'})
+    def test_saved_tags_readonly_preserves_state_history_and_write_restrictions(self):
+        self.saved_ready()
+        before={p:p.read_bytes() for p in (self.root/'ledger').rglob('events/*.json')}
+        for phase in ('before','pending','after'):
+            if phase=='pending':oid=self.inspect_tags()
+            if phase=='after':self.store.finish_operation(self.key,self.lease,oid,outcome='observed',observed=self.tag_proof(),evidence_ref='mock://tags')
+            for op in ('open_tag_settings','input_tags','close_tag_settings','insert_block','insert_table','upload_image','apply_quote','save','publish','new_editor'):
+                with self.subTest(phase=phase,op=op),self.assertRaises(StateError):self.store.begin_operation(self.key,self.lease,op)
+        self.assertEqual(self.store.status(self.key)['state'],'save_acknowledged')
+        self.assertEqual(before,{p:p.read_bytes() for p in before})
+        with self.assertRaises(StateError):self.store.verify(self.key,self.lease,'blank_verified',self.evidence('blank_verified'))
+        self.store.verify(self.key,self.lease,'reopened_verified',self.evidence('reopened_verified'))
+    def test_saved_tags_requires_explicit_readonly_intent_and_complete_proof(self):
+        self.saved_ready()
+        for detail in ({},{'read_only':False,'draft_reference':'draft'},{'read_only':True}):
+            with self.subTest(detail=detail),self.assertRaises(StateError):
+                self.store.begin_operation(self.key,self.lease,'inspect_saved_tags',detail=detail)
+        oid=self.inspect_tags()
+        for change in ({'read_only':False},{'settings_closed':False},{'tags_observed':False},{'content_unchanged':False},
+                       {'tags':None},{'tags':[1]},{'after_content_sha256':'c'*64},{'before_content_sha256':'x'*64,'after_content_sha256':'x'*64}):
+            with self.subTest(change=change),self.assertRaises(StateError):
+                self.store.finish_operation(self.key,self.lease,oid,outcome='observed',observed={**self.tag_proof(),**change},evidence_ref='mock://invalid')
+        self.assertEqual(self.store.status(self.key)['pending_operations'],[oid])
+    def test_saved_tags_pending_or_unknown_never_resumes_insertion(self):
+        self.saved_ready();oid=self.inspect_tags()
+        self.assertEqual(self.store.status(self.key)['resume_decision'],'reconcile_save')
+        self.store.finish_operation(self.key,self.lease,oid,outcome='unknown',observed=None,evidence_ref=None)
+        self.assertEqual(self.store.status(self.key)['state'],'save_unknown')
+        self.assertEqual(self.store.status(self.key)['resume_decision'],'reconcile_save')
+        ev={'environment':'simulation','content_revision':self.key.revision,'target_blog':'demo-blog','observed':{'title':'Test'},'evidence_ref':'mock://partial','checks':{'complete_observation':True,'partial_content_matches':True,'no_inflight_operation':True}}
+        with self.assertRaises(StateError):self.store.reconcile_input(self.key,self.lease,ev)
+        with self.assertRaises(StateError):self.store.begin_operation(self.key,self.lease,'input_tags')
+    def test_saved_tags_is_not_allowed_during_insertion_or_after_completion(self):
+        self.input_ready()
+        with self.assertRaises(StateError):self.inspect_tags()
+        self.store.verify(self.key,self.lease,'input_verified',self.evidence('input_verified'))
+        oid=self.store.begin_operation(self.key,self.lease,'save')
+        self.store.finish_operation(self.key,self.lease,oid,outcome='observed',observed={'save_acknowledged':True},evidence_ref='mock://save')
+        self.store.verify(self.key,self.lease,'reopened_verified',self.evidence('reopened_verified'))
+        with self.assertRaises(StateError):self.inspect_tags()
     def test_full_lifecycle_deduplicates_replay(self):
         self.complete();before=self.store.events(self.key)
         status=self.store.start(self.key,self.lease)
         self.assertEqual(status['resume_decision'],'skip');self.assertEqual(before,self.store.events(self.key))
         with self.assertRaises(StateError):self.store.begin_operation(self.key,self.lease,'insert_block')
         with self.assertRaises(StateError):self.store.begin_operation(self.key,self.lease,'publish')
+    def test_native_table_intent_preserves_write_ahead_and_inserting_state(self):
+        self.store.start(self.key,self.lease)
+        self.store.verify(self.key,self.lease,'editor_checked',self.evidence('editor_checked'))
+        oid=self.store.begin_operation(self.key,self.lease,'insert_table',detail={'block_id':'t1'})
+        self.assertEqual(self.store.status(self.key)['state'],'inserting')
+        self.assertEqual(self.store.status(self.key)['resume_decision'],'reconcile_input')
+        self.store.finish_operation(self.key,self.lease,oid,outcome='observed',observed={'native_table':True},evidence_ref='mock://table')
+        self.store.verify(self.key,self.lease,'input_verified',self.evidence('input_verified'))
+    def test_new_content_evidence_cannot_drop_policy_or_presentation_checks(self):
+        self.input_ready()
+        for field in ('tables','links','line_breaks','paragraph_spacing'):
+            bad=self.evidence('input_verified');del bad['checks'][field]
+            with self.subTest(field=field),self.assertRaises(StateError):self.store.verify(self.key,self.lease,'input_verified',bad)
+        old=self.evidence('input_verified');old['expected']['render_policy']='smarteditor-subset/v1'
+        with self.assertRaises(StateError):self.store.verify(self.key,self.lease,'input_verified',old)
+    def test_immutable_legacy_event_is_readable_but_not_new_verification(self):
+        self.input_ready();old=self.evidence('input_verified')
+        old['expected']['render_policy']='smarteditor-subset/v1';old['checks']={c:True for c in CHECKS['input_verified']}
+        # Historical fixture authored as an old envelope; public verify refuses it.
+        self.store._append(self.key,self.lease,'verification','input_verified',{'verification':old})
+        before={p:p.read_bytes() for p in (self.root/'ledger').rglob('events/*.json')}
+        fresh=ExecutionStore(self.root/'ledger',environment='simulation')
+        self.assertEqual(fresh.status(self.key)['state'],'input_verified')
+        self.assertEqual(before,{p:p.read_bytes() for p in before})
     def test_save_after_click_before_local_ack_requires_reconciliation(self):
         self.save_pending()
         resumed=ExecutionStore(self.root/'ledger',environment='simulation')

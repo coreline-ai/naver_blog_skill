@@ -19,7 +19,8 @@ test('independent canonical and observed fixtures agree including all formatting
 test('render plan splits summary label from body and prefixes marks correctly',()=>{
  const plan=renderPlan(post);assert.equal(plan.steps[6].kind,'quotation');assert.equal(plan.steps[7].kind,'paragraph');
  assert.equal(plan.steps[7].text,'요약 설명');assert.deepEqual(plan.steps[4].marks,[{start:3,end:5,type:'bold'}]);
- assert.deepEqual(plan.fallbacks.map(f=>f.reason),['table-as-labelled-paragraphs','list-as-prefixed-paragraphs','h3-as-paragraph']);
+ assert.deepEqual(plan.fallbacks.map(f=>f.reason),['list-as-prefixed-paragraphs','h3-as-paragraph']);
+ assert.equal(plan.steps[3].kind,'table');assert.equal(plan.render_policy,'smarteditor-layout/v2');
 });
 test('NBSP and visual paragraph line wrapping compare without mutating input',()=>{
  const o=observed(),before=JSON.stringify(o);assert.equal(verify(o).checks.title,true);assert.equal(JSON.stringify(o),before);

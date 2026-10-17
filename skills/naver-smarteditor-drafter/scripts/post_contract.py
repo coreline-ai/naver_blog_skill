@@ -5,6 +5,7 @@ import re
 import json
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 SCHEMA = 'naver-post/v1'
 EDITORIAL_RE = re.compile(r'게시\s*본문\s*제외|편집자용\s*(?:시리즈\s*안내|메모|발행\s*패키지)|\[시리즈\s*식별\s*코드\s*:')
@@ -65,6 +66,20 @@ def safe_segment(value: Any, field: str = 'path segment') -> str:
     return value
 
 
+def validate_link_url(value: Any) -> str:
+    url = require_text(value, 'link.url')
+    try:
+        parsed = urlsplit(url)
+        valid = (parsed.scheme.lower() in ('http', 'https') and parsed.hostname
+                 and parsed.username is None and parsed.password is None)
+        parsed.port  # reject malformed ports too
+    except ValueError:
+        valid = False
+    if not valid or any(c.isspace() or ord(c) < 32 for c in url):
+        raise BuildError('link URL must be an absolute HTTP(S) URL without credentials or whitespace', 'INVALID_LINK')
+    return url
+
+
 def validate_marks(item: dict[str, Any]) -> None:
     text = require_text(item.get('text'), 'text')
     if 'marks' not in item:
@@ -74,12 +89,17 @@ def validate_marks(item: dict[str, Any]) -> None:
         raise BuildError('marks must be an array')
     seen: list[dict[str, Any]] = []
     for mark in marks:
-        if not isinstance(mark, dict) or set(mark) != {'start', 'end', 'type'}:
-            raise BuildError('mark requires only start, end, type')
+        if not isinstance(mark, dict):
+            raise BuildError('mark must be an object')
+        fields = {'start', 'end', 'type'} | ({'url'} if mark.get('type') == 'link' else set())
+        if set(mark) != fields:
+            raise BuildError('mark has unsupported or missing fields')
         start = require_int(mark['start'], 'mark.start')
         end = require_int(mark['end'], 'mark.end', minimum=1)
-        if mark['type'] not in ('bold', 'code') or not start < end <= len(text):
+        if mark['type'] not in ('bold', 'code', 'link') or not start < end <= len(text):
             raise BuildError('invalid mark type or code-point bounds')
+        if mark['type'] == 'link':
+            validate_link_url(mark['url'])
         if any(m['type'] == mark['type'] and max(start, m['start']) < min(end, m['end']) for m in seen):
             raise BuildError('duplicate or overlapping marks of the same type')
         seen.append(mark)

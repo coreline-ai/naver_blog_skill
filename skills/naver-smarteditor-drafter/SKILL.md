@@ -43,7 +43,7 @@ python3.11 -B /absolute/path/to/naver-smarteditor-drafter/scripts/build_naver_po
 1. 모든 본문·미디어·복구 대기 UI까지 빈 화면을 확인한다.
 2. render_plan steps 순서대로 처리하고 이미지 지점에서만 해당 로컬 파일을 업로드한다. 업로드 직전 이미지 해시를 재확인한다. 이미지가 필수인 요청은 본문만 먼저 저장한 뒤 나중에 이미지를 보충하는 방식으로 진행하지 않는다.
 3. H2는 말풍선형, 핵심 요약은 제목 라벨의 라인형 인용구. 이미 적용된 인용구를 반복 변환하지 않는다. 원 selector의 유일성과 선택된 전체 문단을 확인한다.
-4. 표·목록·H3·인라인 code의 대체 서식을 기록하고 bold·본문 의미와 순서를 검증한다. 태그 설정 진입과 최종 공개 발행을 엄격히 구분한다.
+4. 표는 네이티브 행·열 컴포넌트로 입력하고 실제 셀을 대조한다. 문단 자동 대체는 없다. 목록·H3·인라인 code만 문서화된 대체 서식을 기록한다. 링크 href·실제 개행·문단 간격도 검증한다. 태그 설정 진입과 최종 공개 발행을 엄격히 구분한다.
 5. 제목·전체 본문·서식·이미지 위치·태그를 대조한 뒤 임시저장한다. save_acknowledged와 reopened_verified를 구분한다.
 6. 저장 초안을 실제 다시 열어 내용·이미지·태그를 검증하고 새 글쓰기 전체 빈 상태를 확인한 후 다음 회차로 간다.
 
@@ -58,3 +58,7 @@ python3.11 -B /absolute/path/to/naver-smarteditor-drafter/scripts/build_naver_po
 ## 보고
 
 준비·콘텐츠 검수·입력·ack·재열기·빈 화면 상태를 구분하고, 실제 확인한 회차/제목, 이미지/태그, 대체 서식, 오류와 재개 지점을 간결하게 보고한다. 미관찰값은 unknown/null이다. simulation을 실제 UI 성공으로, 로컬 스킬 폴더를 전역 설치로, 임시저장을 공개 발행으로 표현하지 않는다.
+
+현재 표시 검수 정책은 `smarteditor-layout/v2`다. prepare의 출처 기본은 말미이며 명시 inline 요청만 `--source-placement inline`으로 검사한다. `clipboard_renderer.mjs`를 사용해 실제 개행·클릭형 링크·표 payload를 보존하되 UI 관찰은 별도로 수행한다. 입력·재열기 모두 `tables/links/line_breaks/paragraph_spacing`이 통과해야 다음 회차로 간다. 과거 정책은 읽기 이력만 유지하며 새 완료 근거로 사용하지 않는다.
+
+저장 후 태그 검증은 `inspect_saved_tags`의 읽기 전용 열기·읽기·닫기로만 수행한다. 실제 콘텐츠 전후 동일성 증거가 필요하며 태그 수정·재저장·발행을 허용하지 않는다. 자세한 계약은 recovery-and-safety.md를 따른다.

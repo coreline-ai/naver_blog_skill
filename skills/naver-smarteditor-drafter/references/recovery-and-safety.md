@@ -13,7 +13,7 @@ ready → editor_checked → inserting → input_verified
 - `start`는 같은 key를 초기화하지 않는다. `status`와 `events`는 읽기 전용이다.
 - UI 부작용 전에 `begin_operation`의 intent 이벤트를 반드시 확정한다. 이 호출이 실패하면 실제 UI 작업도 수행하지 않는다.
 - 실제 UI 동작 후 `finish_operation`에 observed/failed/unknown 결과를 기록한다. 인식하지 못한 관찰값은 null로 남긴다. 저장은 실제 ack가 있어야 `save_acknowledged`로 전환된다.
-- 허용 작업: insert_block/upload_image/apply_quote/open_tag_settings/input_tags/close_tag_settings/save/open_saved/new_editor. 최종 공개 발행 작업은 없다.
+- 허용 작업: insert_block/insert_table/upload_image/apply_quote/open_tag_settings/input_tags/close_tag_settings/save/open_saved/inspect_saved_tags/new_editor. 최종 공개 발행 작업은 없다.
 - `verify`는 단계별 checks, environment, target_blog, content_revision, 실제 observed, evidence_ref를 요구한다. 이 값은 UI 검사 결과로부터 전달하며 expected를 복사해 만들어내지 않는다.
 - 가상 테스트는 `environment='simulation'`을 사용한다. live store는 simulation 이력을 읽어 재사용하지 못한다.
 
@@ -64,3 +64,11 @@ Lease는 token과 run_id로 소유자를 확인한다. 완료 후 release한다.
 ## 증거와 개인정보
 
 expected/observed/checks/evidence_ref를 분리한다. 관찰값의 출처와 전체/부분 관찰 범위를 남기고 필요한 최소 캡처만 보존한다. 쿠키·로그인 정보·관계없는 초안 전체 목록은 저장하지 않는다. 실제 네이버 작업을 하지 않은 로컬 테스트 보고서에는 simulation임을 명시한다.
+
+새 input/reopened 증거는 `smarteditor-layout/v2`와 tables/links/line_breaks/paragraph_spacing/no_inflight_operation이 필수다. historical 읽기에서만 구 정책을 허용하므로 과거 이벤트 해시·전이를 바꾸지 않는다. 구 저장 성공을 새 표시 품질 통과로 보고하거나 새 verify에 넣을 수 없다.
+
+## 저장 후 태그 읽기 전용 검증
+
+`inspect_saved_tags`는 `save_acknowledged`에서만 설정창 열기 → 태그 읽기 → 닫기를 묶어 기록한다. intent에 `read_only: true`와 실제 `draft_reference`를 남긴다. 결과에는 실제 tags, tags_observed/read_only/settings_closed/content_unchanged=true와 열기 전·닫기 후 실제 제목·본문·이미지·표·서식 관찰의 동일한 SHA-256을 요구한다. expected 원고 해시로 대체하지 않는다.
+
+태그 입력·삭제, 본문 수정, 재저장, 최종 발행은 허용하지 않는다. 기존 open_tag_settings/input_tags/close_tag_settings의 inserting 전용 제한도 그대로 유지한다. 읽기 성공은 save_acknowledged를 유지하며 전체 재열기 검증을 대신하지 않는다. 미완료/실패는 reconcile_save로만 복구하고 삽입 상태로 돌아가지 않는다. 작업을 open_saved 등 다른 이름으로 기록하거나 과거 이벤트를 고치지 않는다.

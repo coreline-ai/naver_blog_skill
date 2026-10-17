@@ -25,11 +25,11 @@ Markdown과 구조형 JSON을 동일한 순서형 블록으로 바꾸어 SmartEd
 | `paragraph` | `text` | 기본 본문 문단 |
 | `image` | 절대 `path`, `alt` | 현재 블록 위치에서 로컬 파일 업로드 |
 | `list` | `style`, `items` | `unordered`, `ordered`, `checklist` 목록 |
-| `table` | `columns`, `rows` | 모바일용 레이블 문단 또는 표 컴포넌트 |
+| `table` | `columns`, `rows` | 네이티브 표 컴포넌트; 지원/관찰 불가 시 중단 |
 | `callout` | `variant`, `title`, `text`, `style` | 요약은 기본 `quotation_line` |
 | `divider` | 없음 | 구분선 컴포넌트 |
 
-`paragraph`, `heading`, 목록 항목은 선택적으로 `marks`를 가진다. 각 mark는 Markdown 표시를 제거한 최종 `text` 기준의 `start`, `end`, `type`(`bold` 또는 `code`)을 기록한다.
+`paragraph`, `heading`, 목록 항목은 선택적으로 `marks`를 가진다. 각 mark는 Markdown 표시를 제거한 최종 `text` 기준의 `start`, `end`, `type`(`bold`, `code`, `link`)을 기록한다.
 
 ## Markdown 규칙
 
@@ -71,8 +71,8 @@ Markdown과 구조형 JSON을 동일한 순서형 블록으로 바꾸어 SmartEd
 - image는 `caption`을 선택적으로 보존한다. checklist item의 선택적 `checked`는 boolean이다. unsupported style/variant는 임의 기본값으로 대체하지 않는다.
 - `tags`와 `seo_tags`는 배열만 받는다. 공백/# 포함 합성 태그 문자열은 100자 이하이다. Markdown의 태그 영역 뒤에는 태그와 구분선만 허용한다.
 - 게시 제외 메모·관리용 시리즈 코드가 본문에 섞이면 `EDITORIAL_BOUNDARY_AMBIGUOUS`로 실패한다. 본문 전용 파일을 제공해야 하며 문자열 삭제로 경계를 추측하지 않는다.
-- Markdown H4 이상, fenced code, HTML, 참조 링크, 중첩 목록, inline image, 미완료 이미지 슬롯은 거부한다. 일반 링크는 설명과 http/https URL을 `설명 (URL)`로 보존하고 대체 경고를 남긴다. 인라인 italic은 plain text 대체 경고를 남긴다.
-- H3·목록·표에는 문서화된 text-render 대체 경고가 있다. 모든 네이티브 서식을 보존한다는 뜻이 아니다. 정본의 표 값·목록 순서는 유지한다.
+- Markdown H4 이상, fenced code, HTML, 참조 링크, 중첩 목록, inline image, 미완료 이미지 슬롯은 거부한다. 일반 링크는 설명만 text에 두고 http/https URL은 `link` mark의 `url`로 보존한다. 전체 URL을 본문에 덧붙이지 않는다. 제목 링크와 표 셀의 inline 서식은 조용히 버리지 않고 실패한다. 인라인 italic은 plain text 대체 경고를 남긴다.
+- H3·목록·inline code에는 문서화된 text-render 대체 경고가 있다. 표는 정본의 열·행·빈 셀을 네이티브 table step으로 보존하며 문단 자동 대체를 하지 않는다. 미지원 표 병합 서식은 허용하지 않는다.
 
 ## 실제 이미지와 콘텐츠 버전
 
@@ -100,3 +100,13 @@ preflight에는 실질 본문이 필요하다. paragraph/list/table/callout 본�
 `build_post(source, project_root, markdown_text=...)`는 승인된 슬롯 삽입기의 메모리 합성 결과를 원래 Markdown source 경로로 변환한다. 기존 두 인수 호출과 canonical 재입력은 그대로 유지한다. `.json/.txt`에는 markdown_text를 제공할 수 없다. source_sha256은 원본 바이트이며 합성 결과의 의미·이미지는 content_revision으로 확인한다.
 
 독립 이미지 블록의 angle-bracket 링크 `![설명](</absolute/path/image.png>)`는 지원한다. 경로 검증 없이 HTML로 취급하거나 본문에 HTML을 허용하는 예외가 아니다. H2/style=quotation_bubble, H3/style=subtitle 조합을 검사하며 렌더할 수 없는 혼합 조합은 거부한다. `load_json_object`는 공유 strict JSON 로더이고 중복 키·비유한 수를 거부한다.
+
+## 표시 품질 계약 `smarteditor-layout/v2`
+
+- `link` mark는 `{type:"link", start, end, url}`다. code point 범위와 HTTP(S) URL을 검증하며 사용자정보·잘못된 port·공백/제어문자·다른 scheme을 거부한다. bold와 link는 겹칠 수 있지만 같은 type의 겹침은 불가하다.
+- Markdown의 문단 내부 개행을 `\n`으로 유지하며 독립 문단은 별도 블록이다. 화면 자동 줄접힘은 명시 개행과 다르다.
+- preflight의 `presentation_review`는 말미 출처 기본값, 중복 URL, 보이는 전체 URL, 출처 뒤 본문 소제목을 검사한다. `--source-placement inline`은 명시 본문 인용 요청용이다. 출처 배치 검사로 사실성/UI 검수 완료를 선언하지 않는다.
+- 표 cell schema는 평문 문자열이다. 셀 내부 굵게/code/link를 지원한다고 가장하지 않고 `UNSUPPORTED_TABLE_INLINE`으로 실패한다. 0개 data row(헤더만)도 네이티브 표로 보존한다.
+- `clipboard_renderer.mjs`는 검증된 post와 연속 step `indices`를 stdin으로 받고 HTML/text를 반환한다. paragraph 그룹 또는 단독 table만 처리한다. quote/image/divider는 별도 UI 작업이며 몰래 생략하지 않는다.
+- 서로 다른 논리 문단 사이에는 빈 paragraph spacer를 출력한다. 실제 UI에서 BR/href/table 구조·문단 여백을 관찰해야 한다. 브라우저가 HTML을 평문으로 붙이면 통과할 수 없다.
+- 새 revision에는 새 render policy가 포함된다. 과거 정책의 콘텐츠 revision은 읽기 진단 시 명시적으로만 재계산하며 원본 패키지/이벤트를 덮어쓰지 않는다. 새 준비에는 새 run-id와 재검수가 필요하다.
