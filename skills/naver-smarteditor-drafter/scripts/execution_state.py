@@ -82,15 +82,29 @@ CHECKS = {
     'reopened_verified': {'draft_identity','title','body_order','image_order','image_anchors','tags','formatting','complete_observation','no_inflight_operation'},
     'blank_verified': {'blank_editor','complete_observation'},
 }
+RENDER_POLICY = 'smarteditor-layout/v2'
+PRESENTATION_CHECKS = {'tables','links','line_breaks','paragraph_spacing','no_inflight_operation','environment','target_blog'}
 VERIFY_FROM = {'editor_checked':{'ready'},'input_verified':{'inserting'},
                'reopened_verified':{'save_acknowledged'},'blank_verified':{'reopened_verified','blank_verified'}}
 OPERATIONS = {
-    'insert_block': {'editor_checked','inserting'}, 'upload_image': {'editor_checked','inserting'},
+    'insert_block': {'editor_checked','inserting'}, 'insert_table': {'editor_checked','inserting'}, 'upload_image': {'editor_checked','inserting'},
     'apply_quote': {'inserting'}, 'open_tag_settings': {'inserting'}, 'input_tags': {'inserting'}, 'close_tag_settings': {'inserting'},
     # A recovery prompt may appear after an earlier blank observation. Recheck
     # only the navigation boundary; completed content cannot be inserted again.
     'save': {'input_verified'}, 'open_saved': {'save_acknowledged'}, 'new_editor': {'reopened_verified','blank_verified'},
+    'inspect_saved_tags': {'save_acknowledged'},
 }
+SAVED_INSPECTION = 'inspect_saved_tags'
+
+
+def _saved_tag_observation(observed: Any) -> bool:
+    """Read-only UI proof; this never substitutes for full reopened verification."""
+    if not isinstance(observed,dict):return False
+    before=observed.get('before_content_sha256');after=observed.get('after_content_sha256')
+    return (all(observed.get(k) is True for k in ('read_only','tags_observed','settings_closed','content_unchanged'))
+            and isinstance(observed.get('tags'),list)
+            and all(isinstance(t,str) and bool(t.strip()) for t in observed['tags'])
+            and isinstance(before,str) and re.fullmatch(r'[a-f0-9]{64}',before) is not None and before==after)
 STATES = {'ready','editor_checked','inserting','input_verified','save_requested','save_acknowledged',
           'reopened_verified','blank_verified','needs_reconciliation','save_unknown','legacy_saved_reported'}
 
@@ -229,31 +243,35 @@ class ExecutionStore:
             valid=not events and state=='legacy_saved_reported' and payload.get('reported_state')=='saved_verified'
         elif kind=='verification':
             valid=previous in VERIFY_FROM.get(state,set()) and not self._pending(events)
-            if valid:self._verification(ExecutionKey(**event['key']),state,payload.get('verification'))
+            if valid:self._verification(ExecutionKey(**event['key']),state,payload.get('verification'),historical=True)
         elif kind=='operation_intent':
             operation=payload.get('operation');pending=self._pending(events)
             valid=not pending and previous in OPERATIONS.get(operation,set())
-            target='save_requested' if operation=='save' else ('inserting' if operation in ('insert_block','upload_image') else previous)
+            target='save_requested' if operation=='save' else ('inserting' if operation in ('insert_block','insert_table','upload_image') else previous)
             valid=valid and state==target and isinstance(event['operation_id'],str) and bool(event['operation_id'])
             valid=valid and all(e['operation_id']!=event['operation_id'] for e in events)
+            if operation==SAVED_INSPECTION:
+                detail=payload.get('detail')
+                valid=valid and isinstance(detail,dict) and detail.get('read_only') is True and bool(detail.get('draft_reference'))
         elif kind=='operation_result':
             pending=self._pending(events);intent=pending.get(event['operation_id']);valid=intent is not None
             if valid:
                 outcome=payload.get('outcome');operation=intent['payload']['operation']
-                target=('save_acknowledged' if operation=='save' else previous) if outcome=='observed' else ('save_unknown' if operation=='save' else 'needs_reconciliation')
+                target=('save_acknowledged' if operation=='save' else previous) if outcome=='observed' else ('save_unknown' if operation in ('save',SAVED_INSPECTION) else 'needs_reconciliation')
                 valid=outcome in ('observed','failed','unknown') and state==target
                 if outcome=='observed':
                     valid=valid and isinstance(payload.get('observed'),dict) and bool(payload['observed']) and bool(payload.get('evidence_ref'))
                     if operation=='save':valid=valid and payload.get('observed',{}).get('save_acknowledged') is True
+                    if operation==SAVED_INSPECTION:valid=valid and _saved_tag_observation(payload.get('observed'))
         elif kind=='reconciled_saved':
             valid=bool(events) and previous in {'inserting','save_requested','save_acknowledged','save_unknown','needs_reconciliation','legacy_saved_reported'} and state=='reopened_verified'
-            if valid:self._verification(ExecutionKey(**event['key']),'reopened_verified',payload.get('verification'))
+            if valid:self._verification(ExecutionKey(**event['key']),'reopened_verified',payload.get('verification'),historical=True)
         elif kind=='reconciled_input':
             valid=bool(events) and previous in {'editor_checked','inserting','needs_reconciliation'} and state=='inserting'
             if valid:self._input_evidence(ExecutionKey(**event['key']),payload.get('verification'))
         elif kind=='reconciled_not_saved':
             valid=bool(events) and previous in {'save_requested','save_unknown'} and state=='input_verified'
-            if valid:self._not_saved_evidence(ExecutionKey(**event['key']),payload.get('verification'))
+            if valid:self._not_saved_evidence(ExecutionKey(**event['key']),payload.get('verification'),historical=True)
         else:valid=False
         if not valid:raise StateError('invalid event transition','INVALID_TRANSITION')
 
@@ -288,7 +306,7 @@ class ExecutionStore:
                 self._guard(path)
                 if path.name!=key.revision and path.is_dir() and any(path.rglob('*.json')):other.append(path.name)
         if other:decision='revision_conflict'
-        elif pending:decision='reconcile_save' if any(e['payload']['operation']=='save' for e in pending.values()) else 'reconcile_input'
+        elif pending:decision='reconcile_save' if any(e['payload']['operation'] in ('save',SAVED_INSPECTION) for e in pending.values()) else 'reconcile_input'
         elif state=='blank_verified':decision='skip'
         elif state=='reopened_verified':decision='verify_blank_only'
         elif state in ('save_acknowledged','save_unknown','legacy_saved_reported'):decision='reconcile_save'
@@ -305,13 +323,20 @@ class ExecutionStore:
         self._append(key,lease,'started','ready',{})
         return self.status(key)
 
-    def _verification(self,key: ExecutionKey,state: str,evidence: Any) -> None:
+    def _verification(self,key: ExecutionKey,state: str,evidence: Any,*,historical: bool = False) -> None:
         if not isinstance(evidence,dict) or evidence.get('environment')!=self.environment or evidence.get('content_revision')!=key.revision:
             raise StateError('verification environment/revision mismatch','INSUFFICIENT_EVIDENCE')
         if evidence.get('target_blog')!=key.target_blog or not evidence.get('evidence_ref') or not isinstance(evidence.get('observed'),dict) or not evidence['observed']:
             raise StateError('actual observations and evidence reference required','INSUFFICIENT_EVIDENCE')
         checks=evidence.get('checks',{})
-        if (not isinstance(checks,dict) or any(checks.get(c) is not True for c in CHECKS[state])
+        required=set(CHECKS[state])
+        if state in ('input_verified','reopened_verified'):
+            policy=evidence.get('expected',{}).get('render_policy') if isinstance(evidence.get('expected'),dict) else None
+            if policy==RENDER_POLICY:
+                required |= PRESENTATION_CHECKS
+            elif not historical or policy not in (None,'smarteditor-subset/v1'):
+                raise StateError('current presentation policy required; legacy observations are history only','INSUFFICIENT_EVIDENCE')
+        if (not isinstance(checks,dict) or any(checks.get(c) is not True for c in required)
                 or any(value is not True for value in checks.values()) or evidence.get('status','passed')!='passed'
                 or evidence.get('scope',state)!=state):
             raise StateError('verification checks incomplete','INSUFFICIENT_EVIDENCE')
@@ -328,7 +353,7 @@ class ExecutionStore:
         if status['conflicting_revisions']:raise StateError('revision conflict','REVISION_CONFLICT')
         oid=operation_id or uuid.uuid4().hex
         safe_segment(oid,'operation id')
-        state='save_requested' if operation=='save' else ('inserting' if operation in ('insert_block','upload_image') else status['state'])
+        state='save_requested' if operation=='save' else ('inserting' if operation in ('insert_block','insert_table','upload_image') else status['state'])
         self._append(key,lease,'operation_intent',state,{'operation':operation,'detail':detail or {}},oid)
         return oid
 
@@ -342,7 +367,7 @@ class ExecutionStore:
             if operation=='save' and observed.get('save_acknowledged') is not True:
                 raise StateError('save acknowledgment not observed','INSUFFICIENT_EVIDENCE')
             state='save_acknowledged' if operation=='save' else events[-1]['state']
-        else:state='save_unknown' if operation=='save' else 'needs_reconciliation'
+        else:state='save_unknown' if operation in ('save',SAVED_INSPECTION) else 'needs_reconciliation'
         return self._append(key,lease,'operation_result',state,{'outcome':outcome,'observed':observed,'evidence_ref':evidence_ref},operation_id)
 
     def reconcile_saved(self,key: ExecutionKey,lease: Lease,evidence: dict) -> dict:
@@ -362,8 +387,8 @@ class ExecutionStore:
         self._input_evidence(key,evidence)
         return self._append(key,lease,'reconciled_input','inserting',{'verification':evidence})
 
-    def _not_saved_evidence(self,key: ExecutionKey,evidence: Any) -> None:
-        self._verification(key,'input_verified',evidence)
+    def _not_saved_evidence(self,key: ExecutionKey,evidence: Any,*,historical: bool = False) -> None:
+        self._verification(key,'input_verified',evidence,historical=historical)
         if evidence.get('user_confirmed_retry') is not True or any(evidence['checks'].get(c) is not True for c in ('no_saved_match','no_inflight_operation','current_input_matches')):
             raise StateError('explicit retry approval and complete not-saved reconciliation required','INSUFFICIENT_EVIDENCE')
 

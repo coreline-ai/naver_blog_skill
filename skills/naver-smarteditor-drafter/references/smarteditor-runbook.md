@@ -28,13 +28,13 @@ observation의 schema는 `smarteditor-observation/v1`이다.
 | observed_at / evidence_ref | 해당 관찰 시각과 원 도구 결과/최소 캡처 참조 |
 | coverage / body_root_observed | 전체 편집 영역을 관찰했는지. 일부 viewport만 읽으면 partial |
 | title_fields | 실제 제목 영역의 component_id/text. 기대 제목을 복사하지 않음 |
-| components | 실제 입력 순서의 모든 paragraph/quotation/image/divider. 알 수 없는 타입도 숨기지 않음 |
+| components | 실제 입력 순서의 모든 paragraph/quotation/table/image/divider. 알 수 없는 타입도 숨기지 않음 |
 | unsupported_components | 해석 불가 요소 목록. 없음을 확인한 경우에만 [] |
 | recovery_pending / inflight_operations | 복구/불러오기 팝업 및 진행 중 업로드·저장 등 |
 | tags_observed / tags | 실제 태그 UI를 읽었는지와 태그 문자열 배열. 미관찰은 false/null |
 | draft_identity | 재열기에서 식별한 reference, matched_unique, evidence_ref |
 
-텍스트 component는 component_id/kind/text/marks, quotation은 추가 style을 가진다. marks는 관찰 텍스트의 Unicode code point 구간이다. UI가 UTF-16 인덱스를 제공하면 `utf16ToCodePoint`로 변환한다. 실제로 강조를 읽지 못했으면 marks를 []로 추측하지 말고 null로 남긴다.
+텍스트 component는 component_id/kind/text/marks, quotation은 추가 style을 가진다. marks는 관찰 텍스트의 Unicode code point 구간이다. UI가 UTF-16 인덱스를 제공하면 `utf16ToCodePoint`로 변환한다. 실제로 강조나 href를 읽지 못했으면 marks를 []로 추측하지 말고 null로 남긴다. link mark는 실제 anchor의 href와 표시 범위를 기록한다. 연속된 동일 href span은 실제 DOM에서 연속임을 확인한 경우에만 합친다.
 
 component_id는 해당 관찰에서 얻은 UI 식별자다. 정본 block id로 덮어쓰지 않는다. 비교기는 순서·문자열·서식으로 정본과 대조한다. 새 관찰에서는 접근성 인덱스·좌표·컴포넌트 ID가 달라질 수 있다.
 
@@ -46,11 +46,11 @@ UI 도구에서 전체 구조가 보이지 않으면 지원되는 스크롤/구�
 
 - `verify_blank`에 scope=`editor_checked`를 사용한다. 제목과 모든 component, 미지원 요소, 복구·진행 중 작업이 검사된다. 비어 있는 문단 하나만으로 통과하지 않는다.
 - 검사 결과 status=passed와 모든 checks=true를 확인한 뒤 ExecutionStore.verify에 그대로 전달한다. failed/unknown 결과의 상태만 바꾸지 않는다.
-- `render_plan(post)`의 steps 순서대로 입력한다. paragraph/quotation/image/divider 외 타입은 임의로 입력하지 않는다.
+- `render_plan(post)`의 steps 순서대로 입력한다. paragraph/quotation/table/image/divider 외 타입은 임의로 입력하지 않는다.
 - H2는 말풍선, 핵심 요약은 라인형 **제목 라벨**이다. callout.text가 있으면 별도 본문 문단으로 이어지고 요약 목록 전체를 감싸지 않는다.
-- H3는 일반 문단, 목록은 번호/불릿/체크 기호를 붙인 문단, 표는 열 이름을 붙인 행별 문단으로 표시한다. code 인라인은 평문 대체, bold는 유지한다. 대체 목록은 render_plan.fallbacks에 남긴다.
+- H3는 일반 문단, 목록은 번호/불릿/체크 기호 문단, code는 평문 대체이며 bold/link는 유지한다. 대체 목록은 render_plan.fallbacks에 남긴다. **표에는 문단 fallback이 없다.** 현재 UI에서 관찰한 표 삽입 도구 또는 지원 clipboard로 같은 행·열을 입력한다. 표 도구는 action_gate의 insert_table 목적을 확인하고, lease의 insert_table intent를 먼저 기록한다.
 - 이미지 위치는 steps의 image 지점이다. 매 이미지 직전 Python verify_asset으로 준비한 바이트를 재확인하고 해당 파일 한 개만 선택한다. 실제 업로드 완료와 표시 위치가 확인되기 전 다음 step으로 이동하지 않는다. caption은 별도 문단이다.
-- paragraph의 empty UI spacer는 전체 대조에서 무시할 수 있으나, 추가 텍스트/인용구/이미지/기타 컴포넌트는 숨기지 않는다.
+- empty UI spacer는 콘텐츠 순서 대조에서만 제외한다. 문단 간격 검수에는 실제 관찰 목록에 그대로 남긴다. 추가 텍스트/인용구/표/이미지/기타 컴포넌트는 숨기지 않는다. 임시 helper로 문단 개행을 공백으로 바꾸거나 HTML의 모든 문단 여백을 0으로 만들지 않는다. clipboard_renderer.mjs의 보존형 payload를 사용하되 지원 도구 입력 후 실제 구조를 확인한다.
 
 모든 부작용 전에 begin_operation을 확정하고, UI 동작 후 finish_operation에 실제 관찰을 기록한다. 기록에 실패하면 해당 동작을 실행하지 않는다. 실패 후 기존 본문 삭제나 전체 재입력으로 복구하지 않는다.
 
@@ -80,7 +80,7 @@ guardedAction은 지원 도구의 신뢰된 바인딩에 gate를 적용하는 �
 
 ## 6. 저장·재열기·다음 회차
 
-1. `verify_content(..., scope=input_verified)`로 제목·전체 텍스트·bold/인용구·이미지 순서/anchor·태그를 대조한다. 전체 본문을 첫/끝 문단이나 개수로 대체하지 않는다.
+1. `verify_content(..., scope=input_verified)`로 제목·전체 텍스트·bold/인용구·이미지 순서/anchor·태그와 tables/links/line_breaks/paragraph_spacing을 대조한다. 전체 본문을 첫/끝 문단이나 개수로 대체하지 않는다.
 2. 저장 intent를 기록하고 임시저장한다. 실제 ack를 관찰하여 save_acknowledged로 기록한다. ack 부재는 저장 실패 단정이 아니라 save_unknown/대조 필요다.
 3. 저장 목록에서 해당 초안을 고유하게 식별한다. 동일 제목이 여럿이면 시간·내용·관찰된 UI 식별 근거로 좁히고 불명확하면 중단한다.
 4. 해당 초안을 실제 다시 열어 새 observation을 수집한다. draftRef와 고유 관찰 근거를 넣고 `verify_content(..., scope=reopened_verified)`를 수행한다. 저장 toast만으로 이 단계를 통과할 수 없다.
@@ -96,3 +96,24 @@ tests의 ui-post/ui-observation은 독립적으로 작성한 가상 fixture이�
 ### 저장 알림을 잃은 재개
 
 원래 save ack를 관찰하지 못한 재개에서는 값을 true로 바꾸지 않는다. 전체 재열기 증거로 ExecutionStore.reconcile_saved가 기록된 경우에 한해 can_advance의 save에 `save_acknowledged:false`, `saved_reconciled:true`, `reconciliation_evidence_ref: 재열기 evidence_ref`, `evidence_ref: 해당 reconciled_saved 이벤트 참조`를 넣는다. 같은 revision·블로그·environment와 전체 입력·재열기·빈 화면 검사는 그대로 필요하다. 임의로 플래그만 채우거나 다른 초안의 증거를 연결하지 않는다.
+
+## 표시 구조 관찰과 완료 정책
+
+현재 render_plan의 `render_policy`는 `smarteditor-layout/v2`다. 입력·재열기에서 아래 항목 모두 true여야 저장 검수/다음 회차를 통과한다. table/paragraph text는 기대 문자열에서 만들어 넣지 않는다.
+
+| 검사 | 실제 관찰 형식·기준 |
+|---|---|
+| `tables` | kind=table, native=true, merged_cells=false, columns/rows 문자열 배열, table_evidence_ref. 실제 header/cell과 모든 빈 셀·행 순서·개행 읽기 |
+| `links` | 실제 anchor href와 code point start/end. URL·표시명·위치가 일치해야 함 |
+| `line_breaks` | text는 text node와 실제 BR/블록 개행으로 읽기. 전체 textContent만 쓰면 BR가 사라지므로 사용하지 않음. 화면 visual wrap을 가짜 newline으로 넣지 않음 |
+| `paragraph_spacing` | 연속 paragraph step의 block_id가 다르면 실제 빈 paragraph 사이 요소, 또는 앞 component의 양수 paragraph_gap_after_px + layout_evidence_ref 필요 |
+
+간격은 앞/뒤 실제 bounding rect의 양수 차이나 computed margin 등 지원된 읽기 기능으로 관찰한 값과 근거를 기록한다. 기대 스타일 숫자나 템플릿 값으로 채우지 않는다. 폰트 줄간격만으로 독립 문단 간격을 증명하지 않는다. 미관찰은 null, 0 이하 간격은 failed다. 같은 list의 item 사이에는 빈 문단을 강제하지 않는다.
+
+표가 문단으로 평탄화되면 failed, native/셀/병합 여부를 읽지 못하면 unknown으로 중단한다. Markdown 표를 비교해야 하는데 이미지로만 대체하는 것도 이 계약의 표 완료가 아니다. 행/열을 읽을 수 없는 도구에서는 사용자에게 제한을 알리고 해당 회차를 멈춘다.
+
+can_advance와 새 ExecutionStore 검증은 현 정책과 표시 검사를 필수로 요구한다. 구 smarteditor-subset/v1 증거는 이벤트 history로 읽을 수 있지만 새 입력/재열기 검증으로 기록하지 않는다. 기존 네이버 글과 패키지를 자동 수정·재입력하지 않는다.
+
+### 저장된 초안의 태그 읽기
+
+저장 후에는 기존 입력용 open_tag_settings/input_tags/close_tag_settings를 재사용하지 않는다. `inspect_saved_tags` intent 하나로 설정 진입·실제 태그 읽기·닫기만 기록한다. 실제 제목/본문/표/이미지/서식의 전후 관찰 해시가 같고 설정창이 닫혔음을 확인해야 한다. 읽기 작업이 실패하거나 중단되면 저장 대조로 복구하고, 태그 수정·재저장·발행으로 진행하지 않는다. 이 결과만으로 reopened_verified를 선언하지 말고 전체 verify_content를 별도로 통과시킨다.

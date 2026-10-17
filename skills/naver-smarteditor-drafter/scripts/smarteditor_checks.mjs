@@ -7,6 +7,17 @@ const cp = v => [...v];
 const clone = v => structuredClone(v);
 const equal = (a,b) => JSON.stringify(a) === JSON.stringify(b);
 const SHA = /^[a-f0-9]{64}$/;
+export const RENDER_POLICY='smarteditor-layout/v2';
+export const PRESENTATION_CHECKS=['tables','links','line_breaks','paragraph_spacing'];
+export function normalizeLines(value) {
+  if(!text(value)) throw new TypeError('text must be a string');
+  return value.replace(/\r\n?/g,'\n').split('\n').map(line=>line.replace(/[^\S\n]+/gu,' ').trim()).join('\n');
+}
+export function safeLink(value) {
+  if(!text(value)||!/^https?:\/\//i.test(value)||/[\s\u0000-\u001f]/u.test(value)) return false;
+  try {const u=new URL(value);return ['https:','http:'].includes(u.protocol)&&!!u.hostname&&!u.username&&!u.password;}
+  catch {return false;}
+}
 export function normalizeText(value) {
   if (!text(value)) throw new TypeError('text must be a string');
   return value.replace(/\r\n?/g,'\n').replace(/\s+/gu,' ').trim();
@@ -22,8 +33,18 @@ export function utf16ToCodePoint(value, index) {
   return n;
 }
 function marksValid(value, marks) {
-  return text(value) && Array.isArray(marks) && marks.every(m => plain(m) && ['bold','code'].includes(m.type)
-    && Number.isInteger(m.start) && Number.isInteger(m.end) && m.start>=0 && m.start<m.end && m.end<=cp(value).length);
+  return text(value) && Array.isArray(marks) && marks.every(m => plain(m) && ['bold','code','link'].includes(m.type)
+    && equal(Object.keys(m).sort(),(m.type==='link'?['end','start','type','url']:['end','start','type']).sort())
+    && (m.type!=='link'||safeLink(m.url))
+    && Number.isInteger(m.start) && Number.isInteger(m.end) && m.start>=0 && m.start<m.end && m.end<=cp(value).length)
+    && marks.every((m,i)=>marks.every((other,j)=>i===j||m.type!==other.type||m.end<=other.start||other.end<=m.start));
+}
+function linkSignatures(value,marks) {
+  const chars=cp(value);
+  return marks.filter(m=>m.type==='link').sort((a,b)=>a.start-b.start).map(m=>({
+    // Browsers percent-encode Unicode hrefs. Compare URL serialization without
+    // decoding reserved separators or changing observed evidence/mark ranges.
+    before:normalizeLines(chars.slice(0,m.start).join('')),label:normalizeLines(chars.slice(m.start,m.end).join('')),url:new URL(m.url).href}));
 }
 function styled(value,marks=[]) {
   if(!marksValid(value,marks)) throw new TypeError('invalid code-point marks');
@@ -44,7 +65,7 @@ export function renderPlan(post) {
   const paragraph=(b,value,marks=[],part='body',style='plain')=>{
     if(!marksValid(value,marks)) throw new TypeError('invalid text or marks');
     if(marks.some(m=>m.type==='code')) fallbacks.push({block_id:b.id,reason:'inline-code-as-plain-text'});
-    steps.push({block_id:b.id,part,kind:'paragraph',text:value,marks:marks.filter(m=>m.type==='bold'),style});
+    steps.push({block_id:b.id,part,kind:'paragraph',text:value,marks:marks.filter(m=>m.type!=='code'),style});
   };
   for(const b of post.blocks) {
     if(!plain(b)||!text(b.id)||ids.has(b.id)) throw new TypeError('unique block id required');
@@ -71,13 +92,8 @@ export function renderPlan(post) {
         });
         fallbacks.push({block_id:b.id,reason:'list-as-prefixed-paragraphs'});break;
       case 'table':
-        if(!Array.isArray(b.columns)||!Array.isArray(b.rows)) throw new TypeError('unsupported table');
-        if(!b.rows.length) paragraph(b,b.columns.join(' | '),[],'table-header');
-        b.rows.forEach((row,i)=>{
-          if(!Array.isArray(row)||row.length!==b.columns.length) throw new TypeError('table width mismatch');
-          paragraph(b,row.map((value,c)=>`${b.columns[c]}: ${value}`).join('\n'),[],`row-${i}`);
-        });
-        fallbacks.push({block_id:b.id,reason:'table-as-labelled-paragraphs'});break;
+        if(!tableShape(b)) throw new TypeError('unsupported table or width mismatch');
+        steps.push({block_id:b.id,part:'table',kind:'table',columns:clone(b.columns),rows:clone(b.rows)});break;
       case 'image':
         steps.push({block_id:b.id,part:'image',kind:'image',path:b.path,alt:b.alt??''});
         if(b.caption) paragraph(b,b.caption,[],'caption');
@@ -86,7 +102,25 @@ export function renderPlan(post) {
       default:throw new TypeError(`unsupported block ${b.type}`);
     }
   }
-  return {schema:'smarteditor-render-plan/v1',title:post.title,steps,tags:clone(post.tags),fallbacks};
+  return {schema:'smarteditor-render-plan/v1',render_policy:RENDER_POLICY,title:post.title,steps,tags:clone(post.tags),fallbacks};
+}
+function tableShape(value) {
+  return Array.isArray(value.columns)&&value.columns.length>0&&value.columns.every(text)&&Array.isArray(value.rows)
+    &&value.rows.every(row=>Array.isArray(row)&&row.length===value.columns.length&&row.every(text));
+}
+function tableValue(value) {return [value.columns.map(normalizeLines),...value.rows.map(row=>row.map(normalizeLines))];}
+function paragraphSpacing(expected,actual,all) {
+  let status=true;
+  for(let i=0;i+1<expected.length;i++) {
+    if(expected[i].kind!=='paragraph'||expected[i+1].kind!=='paragraph'||expected[i].block_id===expected[i+1].block_id) continue;
+    const a=actual[i],b=actual[i+1];
+    if(!a||!b||a.kind!=='paragraph'||b.kind!=='paragraph') return false;
+    const between=all.slice(all.indexOf(a)+1,all.indexOf(b));
+    if(between.some(c=>c.kind==='paragraph'&&text(c.text)&&normalizeText(c.text)===''&&Array.isArray(c.marks)&&c.marks.length===0)) continue;
+    if(!text(a.layout_evidence_ref)||!a.layout_evidence_ref||!Number.isFinite(a.paragraph_gap_after_px)) {if(status!==false)status=null;}
+    else if(a.paragraph_gap_after_px<=0) status=false;
+  }
+  return status;
 }
 function observedComplete(observation) {
   return plain(observation)&&observation.schema==='smarteditor-observation/v1'
@@ -141,28 +175,40 @@ export function verifyContent(post,assets,identity,observation,{scope='input_ver
   const complete=observedComplete(observation);
   result.checks={complete_observation:complete?true:null,environment:plain(observation)?observation.environment===identity.environment:null,
     target_blog:plain(observation)&&text(observation.target_blog)?observation.target_blog===identity.target_blog:null,
-    title:null,body_order:null,image_order:null,image_anchors:null,tags:null,formatting:null};
+    title:null,body_order:null,image_order:null,image_anchors:null,tags:null,formatting:null,
+    tables:null,links:null,line_breaks:null,paragraph_spacing:null};
   if(scope==='reopened_verified') {result.checks.draft_identity=null;result.checks.no_inflight_operation=null;}
   if(!complete) return finish(result);
   const actual=relevantComponents(observation), expected=plan.steps;
   result.checks.title=normalizeText(observation.title_fields[0].text)===normalizeText(plan.title);
   result.checks.no_inflight_operation=observation.inflight_operations.length===0;
-  let body=true,format=true,imageOrder=true,anchors=true;
-  if(actual.length!==expected.length) body=imageOrder=anchors=format=false;
+  let body=true,format=true,imageOrder=true,anchors=true,tables=true,links=true,breaks=true;
+  if(actual.length!==expected.length) body=imageOrder=anchors=format=tables=links=breaks=false;
   for(let i=0;i<expected.length&&i<actual.length;i++) {
     const want=expected[i],got=actual[i];
-    if(want.kind!==got.kind) {body=format=false;if(want.kind==='image'||got.kind==='image') imageOrder=anchors=false;continue;}
+    if(want.kind!==got.kind) {body=format=false;if(want.kind==='table'||got.kind==='table')tables=false;
+      if(text(want.text)){breaks=links=false;}
+      if(want.kind==='image'||got.kind==='image') imageOrder=anchors=false;continue;}
     if(text(want.text)) {
-      if(!text(got.text)) {body=null;format=null;}
+      if(!text(got.text)) {body=null;format=null;links=breaks=null;}
       else {
         if(normalizeText(want.text)!==normalizeText(got.text)) body=false;
-        if(!Array.isArray(got.marks)||!marksValid(got.text,got.marks)) format=null;
-        else if(!equal(styled(want.text,want.marks??[]),styled(got.text,got.marks))) format=false;
+        if(normalizeLines(want.text)!==normalizeLines(got.text)) breaks=false;
+        if(!Array.isArray(got.marks)||!marksValid(got.text,got.marks)) {format=null;links=null;}
+        else {
+          if(!equal(styled(want.text,want.marks??[]),styled(got.text,got.marks))) format=false;
+          if(!equal(linkSignatures(want.text,want.marks??[]),linkSignatures(got.text,got.marks))) links=false;
+        }
         if(want.kind==='quotation') {
           if(!text(got.style)) format=null;
           else if(got.style!==want.style) format=false;
         }
       }
+    }
+    if(want.kind==='table') {
+      if(got.native===false||got.merged_cells===true) tables=false;
+      else if(got.native!==true||got.merged_cells!==false||!text(got.table_evidence_ref)||!got.table_evidence_ref||!tableShape(got)) {if(tables!==false)tables=null;}
+      else if(!equal(tableValue(want),tableValue(got))) {body=false;tables=false;}
     }
     if(want.kind==='image') {
       if(got.loaded!==true) imageOrder=got.loaded===false?false:null;
@@ -172,6 +218,8 @@ export function verifyContent(post,assets,identity,observation,{scope='input_ver
     }
   }
   result.checks.body_order=body;result.checks.formatting=format;result.checks.image_order=imageOrder;result.checks.image_anchors=anchors;
+  result.checks.tables=tables;result.checks.links=links;result.checks.line_breaks=breaks;
+  result.checks.paragraph_spacing=paragraphSpacing(expected,actual,observation.components);
   if(observation.tags_observed===true&&Array.isArray(observation.tags)&&observation.tags.every(text)) {
     const tags=observation.tags;
     result.checks.tags=new Set(tags).size===tags.length&&equal([...tags].sort(),[...plan.tags].sort())
@@ -187,14 +235,14 @@ export function quoteDecision(targetText,style,selection) {
   if(!text(targetText)||!['quotation_bubble','quotation_line','quotation_postit'].includes(style)) throw new TypeError('invalid quote target');
   const stop=reason=>({status:'failed',action:'stop',reason});
   if(!plain(selection)||selection.candidate_count!==1||!text(selection.component_id)||!selection.component_id) return stop('original-selector-not-unique');
-  if(!text(selection.paragraph_text)||normalizeText(selection.paragraph_text)!==normalizeText(targetText)) return stop('paragraph-does-not-match');
+  if(!text(selection.paragraph_text)||normalizeLines(selection.paragraph_text)!==normalizeLines(targetText)) return stop('paragraph-does-not-match');
   if(!['plain','quotation_bubble','quotation_line','quotation_postit'].includes(selection.current_style)) return stop('current-style-unobserved');
   if(selection.current_style===style) return {status:'passed',action:'skip',reason:'already-styled'};
-  if(!text(selection.text)||normalizeText(selection.text)!==normalizeText(targetText)||selection.start!==0||selection.end!==cp(selection.paragraph_text).length) return stop('full-paragraph-not-selected');
+  if(!text(selection.text)||normalizeLines(selection.text)!==normalizeLines(targetText)||selection.start!==0||selection.end!==cp(selection.paragraph_text).length) return stop('full-paragraph-not-selected');
   return {status:'passed',action:'apply',style};
 }
 const ACTIONS={
-  insert_block:['editor','textbox','edit_body'],upload_image:['editor','button','upload_image'],apply_quote:['selection','button','apply_quote'],
+  insert_block:['editor','textbox','edit_body'],insert_table:['editor','button','insert_table'],upload_image:['editor','button','upload_image'],apply_quote:['selection','button','apply_quote'],
   open_tag_settings:['editor','button','open_tag_settings'],close_tag_settings:['publish_settings','button','close_tag_settings'],
   input_tags:['publish_settings','textbox','input_tags'],save:['editor','button','save_draft'],
   open_saved:['draft_list','button','open_saved_draft'],new_editor:['editor','button','new_editor']
@@ -222,6 +270,8 @@ export function canAdvance({identity,input,save,reopened,blank}) {
     if(!plain(value)||value.status!=='passed'||value.scope!==scope||!plain(value.checks)||!Object.keys(value.checks).length
       ||Object.values(value.checks).some(v=>v!==true)||required[name].some(k=>value.checks[k]!==true)||value.environment!==identity.environment||value.target_blog!==identity.target_blog
       ||value.content_revision!==identity.content_revision||!value.evidence_ref||!plain(value.observed)) reasons.push(name+'-not-verified');
+    if(name!=='blank'&&(!plain(value?.expected)||value.expected.render_policy!==RENDER_POLICY
+      ||PRESENTATION_CHECKS.some(k=>value?.checks?.[k]!==true))) reasons.push(name+'-presentation-not-verified');
   }
   // Recovery can prove an existing saved draft by a full, recorded reconciliation.
   // Do not relabel a missing original toast as an observed acknowledgment.

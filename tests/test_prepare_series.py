@@ -70,6 +70,48 @@ class SeriesPreparationTests(unittest.TestCase):
         status = workflow.status(self.outputs / 'run', execution_root=self.root/'events')
         self.assertFalse(status['live_complete']); self.assertEqual(status['next_episode'], 3)
         self.assertEqual(status['next_action'], 'start'); self.assertFalse((self.root/'events').exists())
+    def test_presentation_summary_recomputed_not_trusted(self):
+        self.approve();self.run_prepare()
+        folder=self.outputs/'run';preflight=folder/'episode-03/preflight-report.json'
+        data=json.loads(preflight.read_text());data['presentation_review']['link_count']=999
+        preflight.write_text(workflow.encoded(data))
+        # Rehash wrapper artifacts: canonical presentation still contradicts the forged summary.
+        snap=json.loads((folder/'snapshot.json').read_text());snap['files']['episode-03/preflight-report.json']=workflow.sha(preflight)
+        (folder/'snapshot.json').write_text(workflow.encoded(snap))
+        complete=json.loads((folder/'complete.json').read_text());complete['snapshot_sha256']=workflow.sha(folder/'snapshot.json')
+        (folder/'complete.json').write_text(workflow.encoded(complete))
+        status=workflow.status(folder,execution_root=self.root/'events')
+        self.assertEqual(status['integrity'],'failed');self.assertEqual(status['queue'],[])
+    def test_explicit_inline_policy_for_series(self):
+        article=self.inputs/'episode-03/article.md'
+        article.write_text(article.read_text().replace('도입 설명입니다.','도입 [공식 자료](https://example.org).'))
+        report=self.run_prepare(check=True)
+        self.assertEqual(report['episodes'][0]['status'],'preflight_failed')
+        explicit=self.run_prepare(check=True,source_placement='inline')
+        self.assertIsNotNone(explicit['episodes'][0]['content_revision'])
+    def test_legacy_preparation_stays_readable_but_not_new_presentation_ready(self):
+        self.approve();self.run_prepare();folder=self.outputs/'run';episode=folder/'episode-03'
+        post=json.loads((episode/'naver-post.json').read_text())
+        assets=json.loads((episode/'asset-integrity.json').read_text())['assets']
+        old_revision=workflow.content_revision(post,assets,render_policy='smarteditor-subset/v1')
+        for name in ('preflight-report.json','review.json','review-template.json'):
+            path=episode/name
+            if not path.exists():continue
+            data=json.loads(path.read_text());data['content_revision']=old_revision
+            if name=='preflight-report.json':
+                data['render_policy']='smarteditor-subset/v1';data.pop('presentation_review',None)
+            path.write_text(workflow.encoded(data))
+        report=json.loads((folder/'series-report.json').read_text());report['episodes'][0]['content_revision']=old_revision
+        (folder/'series-report.json').write_text(workflow.encoded(report))
+        snap=json.loads((folder/'snapshot.json').read_text())
+        snap['files']={name:workflow.sha(folder/name) for name in snap['files']}
+        (folder/'snapshot.json').write_text(workflow.encoded(snap))
+        marker=json.loads((folder/'complete.json').read_text());marker['snapshot_sha256']=workflow.sha(folder/'snapshot.json')
+        (folder/'complete.json').write_text(workflow.encoded(marker));before=snapshot(folder)
+        result=workflow.status(folder,execution_root=self.root/'events')
+        self.assertEqual(result['integrity'],'passed');self.assertFalse(result['presentation_ready'])
+        self.assertEqual(result['queue'],[]);self.assertEqual(result['next_action'],'presentation_review_required')
+        self.assertEqual(before,snapshot(folder))
     def test_missing_requested_episode_blocks_entire_queue(self):
         self.add_episode(5); self.data['requested_episodes']=[3,4,5]; self.save_manifest(); self.approve()
         report=self.run_prepare()

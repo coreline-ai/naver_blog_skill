@@ -89,9 +89,12 @@ class ConverterRegressionTests(unittest.TestCase):
     def test_unsupported_markdown_silently_passes(self):
         source=self.write('episode-03.md','# 제목\n\n😀 **강조** [출처](https://example.org/source)\n')
         post,w=build_post(source,self.root)
-        self.assertEqual(post['blocks'][0]['text'],'😀 강조 출처 (https://example.org/source)')
-        self.assertEqual(post['blocks'][0]['marks'],[{'type':'bold','start':2,'end':4}])
-        self.assertIn('links rendered as label (URL)',w)
+        self.assertEqual(post['blocks'][0]['text'],'😀 강조 출처')
+        self.assertEqual(post['blocks'][0]['marks'],[{'type':'bold','start':2,'end':4},
+            {'type':'link','start':5,'end':7,'url':'https://example.org/source'}])
+        self.assertNotIn('links rendered as label (URL)',w)
+        self.assertIn('INLINE_SOURCE_LINK',preflight_report(post,source,w)['error_codes'])
+        self.assertEqual(preflight_report(post,source,w,source_placement='inline')['status'],'passed')
         for syntax in ['#### H4','```python\nprint(1)\n```','<script>bad</script>','[a][ref]','  - nested','plain ![x](a.png)']:
             source.write_text('# 제목\n\n'+syntax)
             with self.subTest(syntax=syntax),self.assertRaises(BuildError): build_post(source,self.root)

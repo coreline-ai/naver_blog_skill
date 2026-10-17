@@ -15,13 +15,14 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
-from post_contract import (BuildError, check_editorial, require_int, require_text, safe_segment, validate_post, load_json_object)
+from post_contract import (BuildError, check_editorial, require_int, require_text, safe_segment, validate_post, load_json_object, validate_link_url)
 from asset_integrity import inspect_asset
+from presentation_quality import review_presentation
 
 
 SCHEMA = "naver-post/v1"
 RUN_SCHEMA = "naver-smarteditor-run/v2"
-RENDER_POLICY = "smarteditor-subset/v1"
+RENDER_POLICY = "smarteditor-layout/v2"
 IMAGE_RE = re.compile(r"^!\[([^]]*)\]\((?:<([^>]+)>|([^\s)]+))\)\s*$")
 HEADING_RE = re.compile(r"^(#{1,3})\s+(.+?)\s*$")
 LIST_RE = re.compile(r"^\s*(?:(\d+)\.|[-+*])\s+(.+?)\s*$")
@@ -59,8 +60,8 @@ def _episode_number(path: Path, data: dict[str, Any] | None = None) -> int | Non
     return identities[0] if identities else None
 
 
-def _inline(raw: str) -> dict[str, Any]:
-    """Preserve code-point offsets while explicitly flattening links/emphasis."""
+def _inline_scan(raw: str) -> tuple[str, list[dict[str, Any]]]:
+    """Keep label/href and overlapping bold/link ranges, without trimming children."""
     require_text(raw, 'inline text', empty=True)
     pattern = re.compile(r'(\*\*([^*]+)\*\*|`([^`]+)`|\[([^\]\n]+)\]\(([^)\s]+)\)|(?<!\*)\*([^*\n]+)\*(?!\*)|(?<!\w)_([^_\n]+)_(?!\w))')
     parts, marks, cursor, length = [], [], 0, 0
@@ -68,22 +69,43 @@ def _inline(raw: str) -> dict[str, Any]:
         prefix = raw[cursor:match.start()]
         parts.append(prefix); length += len(prefix)
         bold, code, label, url, emphasis, underscore = match.groups()[1:]
+        nested = []
         if url is not None:
-            if urlsplit(url).scheme not in ('http','https') or not urlsplit(url).netloc or '(' in url:
+            if '(' in url:
                 raise BuildError('unsupported link URL or nested link syntax', 'UNSUPPORTED_MARKDOWN')
-            value = f'{label} ({url})'
+            validate_link_url(url)
+            value, nested = _inline_scan(label)
+            if any(mark['type'] == 'link' for mark in nested) or not value.strip():
+                raise BuildError('empty or nested link label', 'INVALID_LINK')
+            marks.append({'start': length, 'end': length + len(value), 'type': 'link', 'url': url})
+        elif code is not None:
+            value = code
         else:
-            value = next(v for v in (bold,code,emphasis,underscore) if v is not None)
+            value, nested = _inline_scan(next(v for v in (bold, emphasis, underscore) if v is not None))
+        marks.extend({**mark, 'start': mark['start'] + length, 'end': mark['end'] + length} for mark in nested)
         if bold is not None or code is not None:
             marks.append({'start':length,'end':length+len(value),'type':'bold' if bold is not None else 'code'})
         parts.append(value); length+=len(value); cursor=match.end()
     parts.append(raw[cursor:])
-    combined=''.join(parts)
+    return ''.join(parts), marks
+
+
+def _inline(raw: str) -> dict[str, Any]:
+    combined, marks = _inline_scan(raw)
     leading=len(combined)-len(combined.lstrip())
     result={'text':combined.strip()}
     if marks:
-        result['marks']=[{**m,'start':m['start']-leading,'end':m['end']-leading} for m in marks]
+        end = leading + len(result['text'])
+        result['marks']=[{**m,'start':max(m['start'],leading)-leading,'end':min(m['end'],end)-leading}
+                         for m in marks if max(m['start'],leading) < min(m['end'],end)]
     return result
+
+
+def _table_cell(raw: str) -> str:
+    item = _inline(raw)
+    if item.get('marks'):
+        raise BuildError('table cells are plain text; move links to references and do not silently drop inline formatting', 'UNSUPPORTED_TABLE_INLINE')
+    return item['text']
 
 
 def _parse_table_row(line: str) -> list[str]:
@@ -172,7 +194,10 @@ def parse_markdown(source: Path, project_root: Path, *, text: str | None = None)
     if len(h1_lines) != 1:
         raise BuildError(f"Markdown must contain exactly one H1 title; found {len(h1_lines)}")
 
-    title = _inline(h1_lines[0])["text"]
+    title_inline = _inline(h1_lines[0])
+    if any(m['type'] == 'link' for m in title_inline.get('marks', [])):
+        raise BuildError('title does not support hyperlinks', 'UNSUPPORTED_TITLE_LINK')
+    title = title_inline['text']
     if not title:
         raise BuildError("title must not be empty")
 
@@ -219,7 +244,7 @@ def parse_markdown(source: Path, project_root: Path, *, text: str | None = None)
             continue
 
         label_match = LABEL_RE.match(line)
-        if label_match:
+        if label_match and not re.search(r'\[[^]]+\]\(', label_match.group(1)):
             label = label_match.group(1).strip()
             if label == "태그":
                 in_tags = True
@@ -260,11 +285,11 @@ def parse_markdown(source: Path, project_root: Path, *, text: str | None = None)
             continue
 
         if index + 1 < len(lines) and "|" in line and _is_table_separator(lines[index + 1]):
-            columns = [_inline(c)["text"] for c in _parse_table_row(line)]
+            columns = [_table_cell(c) for c in _parse_table_row(line)]
             rows: list[list[str]] = []
             index += 2
             while index < len(lines) and lines[index].strip() and "|" in lines[index]:
-                row = [_inline(c)["text"] for c in _parse_table_row(lines[index])]
+                row = [_table_cell(c) for c in _parse_table_row(lines[index])]
                 if len(row) != len(columns):
                     raise BuildError(f"table row has {len(row)} cells; expected {len(columns)} on line {index + 1}")
                 rows.append(row)
@@ -296,7 +321,7 @@ def parse_markdown(source: Path, project_root: Path, *, text: str | None = None)
         while index < len(lines) and not _is_block_start(lines, index):
             paragraph_lines.append(lines[index].strip())
             index += 1
-        raw_paragraph = " ".join(value for value in paragraph_lines if value)
+        raw_paragraph = "\n".join(value.rstrip() for value in paragraph_lines if value)
         if raw_paragraph.startswith(">"):
             warnings.append("blockquote downgraded to paragraph")
             raw_paragraph = raw_paragraph.lstrip("> ")
@@ -439,11 +464,10 @@ def build_post(source: Path, project_root: Path, *, markdown_text: str | None = 
         if len(set(paths))!=len(paths): raise BuildError('duplicate image path')
         raw=source.read_text(encoding='utf-8') if markdown_text is None else markdown_text
         if source.suffix.lower()=='.md' or 'schema' not in _load_json_text(source):
-            if re.search(r'\[[^]\n]+\]\(https?://',raw): warnings.append('links rendered as label (URL)')
             if re.search(r'(?<!\*)\*[^*\n]+\*(?!\*)|(?<!\w)_[^_\n]+_(?!\w)',raw):
                 warnings.append('italic emphasis rendered as plain text')
         for b in post['blocks']:
-            if b['type'] in ('list','table') or b.get('level')==3:
+            if b['type'] == 'list' or b.get('level')==3:
                 msg=f"{b['type']} uses documented text-render fallback"
                 if msg not in warnings: warnings.append(msg)
         return post,warnings
@@ -453,7 +477,9 @@ def build_post(source: Path, project_root: Path, *, markdown_text: str | None = 
         raise BuildError(f'invalid input value: {exc}') from exc
 
 
-def content_revision(post: dict[str, Any], assets: list[dict[str, Any]]) -> str:
+def content_revision(post: dict[str, Any], assets: list[dict[str, Any]], *, render_policy: str = RENDER_POLICY) -> str:
+    if render_policy not in (RENDER_POLICY, 'smarteditor-subset/v1'):
+        raise BuildError('unknown rendering policy', 'INVALID_RENDER_POLICY')
     semantic=copy.deepcopy(post)
     semantic.pop('source',None)
     by_path={a['path']:a for a in assets}
@@ -461,7 +487,7 @@ def content_revision(post: dict[str, Any], assets: list[dict[str, Any]]) -> str:
         if block['type']=='image':
             asset=by_path[block.pop('path')]
             block['asset']={k:v for k,v in asset.items() if k!='path'}
-    data={'render_policy':RENDER_POLICY,'post':semantic}
+    data={'render_policy':render_policy,'post':semantic}
     return hashlib.sha256(json.dumps(data,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
 
 
@@ -469,6 +495,7 @@ def preflight_report(
     post: dict[str, Any], source: Path, warnings: list[str], *,
     expected_images: int | None = None, expected_tags: int | None = None,
     project_root: Path | None = None,
+    source_placement: str = 'end',
 ) -> dict[str, Any]:
     validate_post(post)
     for value,field in ((expected_images,'expected_images'),(expected_tags,'expected_tags')):
@@ -477,6 +504,9 @@ def preflight_report(
     for b in post['blocks']: counts[b['type']]=counts.get(b['type'],0)+1
     errors=[];error_codes=[];assets=[]
     def error(message,code): errors.append(message);error_codes.append(code)
+    presentation = review_presentation(post, source_placement=source_placement)
+    for issue in presentation['issues']:
+        error(f"{issue['block_id']}: {issue['detail']}", issue['code'])
     if expected_images is not None and counts.get('image',0)!=expected_images:
         error(f"expected {expected_images} images; found {counts.get('image',0)}",'IMAGE_COUNT_MISMATCH')
     if expected_tags is not None and len(post['tags'])!=expected_tags:
@@ -497,7 +527,7 @@ def preflight_report(
             'block_count':len(post['blocks']),'block_counts':counts,'image_count':counts.get('image',0),
             'tag_count':len(post['tags']),'tag_string_length':len(' '.join('#'+t for t in post['tags'])),
             'asset_integrity':assets,'warnings':list(warnings),'errors':errors,'error_codes':error_codes,
-            'content_review':'not_evaluated','ui_verification':'not_performed'}
+            'presentation_review':presentation,'content_review':'not_evaluated','ui_verification':'not_performed'}
 
 
 def _atomic_write(path: Path, content: str) -> None:
@@ -549,10 +579,10 @@ def _destination_name(post: dict[str, Any], source: Path) -> str:
 
 
 def _prepare_one(source: Path, project_root: Path, *, expected_images: int | None,
-                 expected_tags: int | None) -> tuple[dict[str, Any], dict[str, Any]]:
+                 expected_tags: int | None, source_placement: str = 'end') -> tuple[dict[str, Any], dict[str, Any]]:
     post,warnings=build_post(source,project_root)
     report=preflight_report(post,source,warnings,expected_images=expected_images,
-                            expected_tags=expected_tags,project_root=project_root)
+                            expected_tags=expected_tags,project_root=project_root,source_placement=source_placement)
     if report['errors']:
         raise BuildError('; '.join(report['errors']),report['error_codes'][0])
     return post,report
@@ -632,7 +662,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         episode=None
         try:
             episode=_episode_number(source)
-            post,report=_prepare_one(source,project_root,expected_images=args.expected_images,expected_tags=args.expected_tags)
+            post,report=_prepare_one(source,project_root,expected_images=args.expected_images,expected_tags=args.expected_tags,
+                                     source_placement=getattr(args,'source_placement','end'))
             destination=_destination_name(post,source)
             if destination in destinations: raise BuildError('duplicate output destination','EPISODE_IDENTITY_CONFLICT')
             destinations.add(destination)
@@ -684,6 +715,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--episode-max", type=int)
     parser.add_argument("--expected-images", type=int)
     parser.add_argument("--expected-tags", type=int)
+    parser.add_argument("--source-placement", choices=('end','inline'), default='end',
+                        help="profile default: sources at end; inline only for an explicit user request")
     return parser
 
 

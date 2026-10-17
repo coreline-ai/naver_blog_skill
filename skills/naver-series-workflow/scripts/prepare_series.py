@@ -18,7 +18,8 @@ if not (DRAFTER / 'scripts/post_contract.py').is_file():
     raise SystemExit('DEPENDENCY_MISSING: sibling naver-smarteditor-drafter; no automatic installation')
 sys.path.insert(0, str(DRAFTER / 'scripts'))
 from post_contract import BuildError, load_json_object, require_int, require_text, safe_segment, validate_post
-from build_naver_post import build_post, preflight_report, content_revision, safe_run_directory, write_prepared_run
+from build_naver_post import build_post, preflight_report, content_revision, safe_run_directory, write_prepared_run, RENDER_POLICY
+from presentation_quality import review_presentation
 from asset_integrity import verify_asset
 from execution_state import ExecutionKey, ExecutionStore
 from content_metrics import body_metrics
@@ -470,7 +471,7 @@ def verify_sources(records: list[dict], root: Path) -> None:
             raise BuildError('source or sidecar changed: ' + path.name, 'SOURCE_CHANGED')
 
 
-def prepare(manifest: Path, input_root: Path, output_root: Path, run_id: str, *, check: bool = False, reuse: bool = False) -> dict:
+def prepare(manifest: Path, input_root: Path, output_root: Path, run_id: str, *, check: bool = False, reuse: bool = False, source_placement: str = 'end') -> dict:
     root = Path(input_root).expanduser().resolve()
     if not root.is_dir():
         raise BuildError('input root must exist', 'UNSAFE_PATH')
@@ -509,7 +510,7 @@ def prepare(manifest: Path, input_root: Path, output_root: Path, run_id: str, *,
                 raise BuildError('manifest and article episode disagree', 'EPISODE_IDENTITY_CONFLICT')
             post['episode'] = ep
             expected_images = data['requirements']['images_per_episode'] if contract_version == 1 else None
-            preflight = preflight_report(post, source, warnings, expected_images=expected_images, project_root=root)
+            preflight = preflight_report(post, source, warnings, expected_images=expected_images, project_root=root, source_placement=source_placement)
             if contract_version == 2:
                 bindings = build_slot_bindings(post, slots)
                 caption_ids = [binding['caption_block_id'] for binding in bindings if binding['caption_block_id']]
@@ -659,7 +660,7 @@ def validate_v2_snapshot_episode(directory: Path, entry: dict, requirements: dic
             or preflight.get('content_revision') != entry.get('content_revision')):
         raise BuildError('v2 canonical summary disagrees with episode artifacts', 'CORRUPT_SNAPSHOT')
     if len(assets) == image_count:
-        if content_revision(post, assets) != entry.get('content_revision'):
+        if content_revision(post, assets, render_policy=preflight.get('render_policy','smarteditor-subset/v1')) != entry.get('content_revision'):
             raise BuildError('v2 canonical revision mismatch', 'CORRUPT_SNAPSHOT')
     elif entry.get('content_revision') is not None:
         raise BuildError('v2 revision exists without complete assets', 'CORRUPT_SNAPSHOT')
@@ -801,8 +802,17 @@ def status(run_directory: Path, *, execution_root: Path | None = None, target_bl
             assets = load_json_object(folder / 'asset-integrity.json')['assets']
             for asset in assets:
                 verify_asset(asset, root)
-            if post['episode'] != entry['episode'] or content_revision(post, assets) != entry['content_revision']:
+            preflight=load_json_object(folder / 'preflight-report.json')
+            policy=preflight.get('render_policy','smarteditor-subset/v1')
+            if post['episode'] != entry['episode'] or content_revision(post, assets, render_policy=policy) != entry['content_revision']:
                 raise BuildError('canonical identity/revision mismatch', 'CORRUPT_SNAPSHOT')
+            row['presentation_ready']=False
+            if policy==RENDER_POLICY:
+                stored=preflight.get('presentation_review')
+                if not isinstance(stored,dict):raise BuildError('presentation review missing','CORRUPT_SNAPSHOT')
+                fresh=review_presentation(post,source_placement=stored.get('source_placement'))
+                if fresh!=stored:raise BuildError('presentation summary differs from canonical blocks','CORRUPT_SNAPSHOT')
+                row['presentation_ready']=fresh['status']=='passed'
             styles = ({report['requirements']['primary_style'], report['requirements']['secondary_style']}
                       if contract_version == 2 else None)
             if entry['status'] == 'ready' and check_review(
@@ -818,7 +828,8 @@ def status(run_directory: Path, *, execution_root: Path | None = None, target_bl
     valid = not issues and not any(r['issues'] for r in rows)
     complete = valid and report['status'] == 'ready' and bool(rows) and all(r['execution'] is not None and r['execution']['state'] == 'blank_verified' and r['execution']['resume_decision'] == 'skip' for r in rows)
     remaining = [r for r in rows if r['execution'] is None or r['execution']['resume_decision'] != 'skip']
-    eligible = valid and report['status'] == 'ready' and store is not None and blog is not None
+    presentation_ready=bool(rows) and all(r.get('presentation_ready') is True for r in rows)
+    eligible = valid and presentation_ready and report['status'] == 'ready' and store is not None and blog is not None
     conflict = any(r['execution'] and r['execution']['resume_decision'] == 'revision_conflict' for r in rows)
     next_row = remaining[0] if remaining and eligible and not conflict else None
     queue = [r['episode'] for r in remaining] if eligible and not conflict and all(r['execution']['resume_decision'] == 'start' for r in remaining) else []
@@ -826,11 +837,12 @@ def status(run_directory: Path, *, execution_root: Path | None = None, target_bl
             'quality_contract': report.get('quality_contract'),
             'preparation': report['status'], 'integrity': 'passed' if valid else 'failed', 'target_blog': blog,
             'requested_episodes': report['requested_episodes'], 'episodes': rows, 'issues': issues,
-            'execution_complete': complete, 'live_complete': complete and environment == 'live',
+            'presentation_ready':presentation_ready,
+            'execution_complete': complete, 'live_complete': complete and presentation_ready and environment == 'live',
             'prepared_queue': report['queue'] if valid else [], 'queue': queue,
             'remaining_episodes': [r['episode'] for r in remaining],
             'next_episode': next_row['episode'] if next_row else None,
-            'next_action': next_row['execution']['resume_decision'] if next_row else ('complete' if complete else 'not_eligible'),
+            'next_action': next_row['execution']['resume_decision'] if next_row else ('presentation_review_required' if valid and not presentation_ready else ('complete' if complete else 'not_eligible')),
             'ui_authorized': False, 'ui_observed_now': False}
 
 
@@ -844,6 +856,7 @@ def main(argv: list[str] | None = None) -> int:
     prepare_parser.add_argument('--run-id', required=True)
     prepare_parser.add_argument('--check', action='store_true', help='validate without writes')
     prepare_parser.add_argument('--reuse', action='store_true', help='reuse exact immutable preparation only; never resume UI')
+    prepare_parser.add_argument('--source-placement', choices=('end','inline'), default='end', help='inline only for an explicit user choice')
     status_parser = sub.add_parser('status')
     status_parser.add_argument('--run-directory', type=Path, required=True)
     status_parser.add_argument('--execution-root', type=Path)
@@ -852,7 +865,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         if args.mode == 'prepare':
-            result = prepare(args.manifest, args.input_root, args.output_root, args.run_id, check=args.check, reuse=args.reuse)
+            result = prepare(args.manifest, args.input_root, args.output_root, args.run_id, check=args.check, reuse=args.reuse,source_placement=args.source_placement)
             code = 0 if result['status'] == 'ready' else 1
         else:
             result = status(args.run_directory, execution_root=args.execution_root, target_blog=args.target_blog, environment=args.environment)
