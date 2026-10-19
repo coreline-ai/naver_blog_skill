@@ -1,6 +1,6 @@
 # 현재 스킬 기능과 사용 예제
 
-기준일: **2026-10-12**. 현재 저장소의 작업 트리와 각 `SKILL.md`를 기준으로 정리했다. 구현된 기능, 이전 검증 기록, 아직 확인하지 않은 실행 환경을 구분한다. 사용자 명시 조건이 기본값보다 우선하며, 세부 계약은 연결된 스킬·reference를 따른다.
+기준일: **2026-10-19**. 현재 저장소의 작업 트리와 각 `SKILL.md`를 기준으로 정리했다. 구현된 기능, 이전 검증 기록, 아직 확인하지 않은 실행 환경을 구분한다. 사용자 명시 조건이 기본값보다 우선하며, 세부 계약은 연결된 스킬·reference를 따른다.
 
 ## 1. 어떤 스킬을 사용할까?
 
@@ -10,6 +10,7 @@
 | 옵션을 한 질문씩 선택하며 작성 | [naver-blog-wizard](../skills/naver-blog-wizard/SKILL.md) | 확정 원고·이미지 계획·요청한 이미지 패키지와 재개 가능한 세션 |
 | 제목만 생성·개선 | [naver-title](../skills/naver-title/SKILL.md) | 검색형·홈판형·혼합형 후보와 추천 |
 | 실제 유입을 보고 다음 주제 선정 | [naver-creator-keyword-recommender](../skills/naver-creator-keyword-recommender/SKILL.md) | 추천 키워드·대표 제목·집계 패턴·수집 상태 |
+| 월별 시즌 글감으로 기획·작성·갱신 | [naver-seasonal-blog-writer](../skills/naver-seasonal-blog-writer/SKILL.md) | 월별 추천·실제 원고·검수·버전·블로그별 로컬 이력 |
 | 연재를 기획하고 한 편씩 작성 | [seo-series-writer](../skills/seo-series-writer/SKILL.md) | 전체 목차와 요청한 회차 원고 |
 | 여러 편의 원고·이미지 패키지 준비 | [naver-series-workflow](../skills/naver-series-workflow/SKILL.md) | 검수 상태와 네이버 입력용 준비 패키지 |
 | 완성 원고를 네이버에 입력·임시저장 | [naver-smarteditor-drafter](../skills/naver-smarteditor-drafter/SKILL.md) | 사전검증 또는 입력·저장·재열기 확인 기록 |
@@ -22,7 +23,7 @@
 초보 여행자를 위한 비교형 글로 작성해줘.
 ```
 
-아래의 `$스킬명` 예제는 설치·등록된 환경 기준이다. 폴더나 `agents/openai.yaml`이 존재하는 것만으로 전역 설치·자동 선택 성공을 의미하지 않는다. 문답형과 공통 이미지 도우미를 쓰는 흐름은 저장소의 공통 파일·sibling 스킬을 참조하므로 하위 스킬 폴더만 복사해 독립 실행된다고 안내하지 않는다.
+아래의 `$스킬명` 예제는 설치·등록된 환경 기준이다. 폴더나 `agents/openai.yaml`이 존재하는 것만으로 전역 설치·자동 선택 성공을 의미하지 않는다. 문답형과 공통 이미지 도우미를 쓰는 흐름은 저장소의 공통 파일·sibling 스킬을 참조한다. 월별 시즌 작성 스킬은 자기 폴더만으로 동작하는 별도 경로다.
 
 ## 2. 기본값과 적용 범위
 
@@ -41,6 +42,8 @@
 | 완성형 연재 본문 | 편당 최소 3,000자 | 제목·태그·참고 URL·이미지 정보·편집 메모 제외 |
 | 이미지 필수 연재 | 표지 1장 + 본문 2장 이상, 총 최소 3장 | 전문가형 미지정 목표는 5장. 다른 프로필의 기존 목표 유지 |
 | 유입 분석 기간 | 오늘 제외 최근 완료 7일과 이전 7일 비교 | 사용자 지정 기간 우선 |
+| 월별 시즌 추천 | 현재 월·현재 연도·8개, 분야 미지정이면 전체 | 지정한 월·연도·분야·개수 우선. 추천만으로 원고를 만들지 않음 |
+| 추천 후 작성 | 저장한 번호·주제를 그대로 사용 | 공식 자료 확인·검수·원고 버전·블로그별 이력 저장 |
 | 네이버 입력 | `prepare`로 로컬 사전검증 | 실제 입력·임시저장은 명시 요청 시 `draft` |
 
 **참고 글 5개·이미지 5장·제목 후보 5개는 각각 독립된 조건이다.** 시리즈의 15편·3,000자·이미지 최소 3장을 단일 글에 적용하지 않는다. 제목의 혼합형과 이미지의 혼합형도 별개다.
@@ -269,8 +272,9 @@ $naver-smarteditor-drafter
 | [wizard_session.py](../skills/naver-blog-wizard/scripts/wizard_session.py) · [wizard_artifacts.py](../skills/naver-blog-wizard/scripts/wizard_artifacts.py) | 문답 상태·변경·재개와 산출물 검증 |
 | [prepare_series.py](../skills/naver-series-workflow/scripts/prepare_series.py) | 시리즈 검수 상태와 불변 준비 run 생성 |
 | [build_naver_post.py](../skills/naver-smarteditor-drafter/scripts/build_naver_post.py) | 네이버 정본 변환·사전검증 |
+| [catalog.py](../skills/naver-seasonal-blog-writer/scripts/catalog.py) · [article.py](../skills/naver-seasonal-blog-writer/scripts/article.py) · [history.py](../skills/naver-seasonal-blog-writer/scripts/history.py) | 월별 후보 조회·작성 패킷/버전/검수 연결·블로그별 로컬 이력 |
 
-Python 도우미는 Python 3.11+를 사용하고, 이미지 검사에는 Pillow가 필요하다. SmartEditor 관찰 검사에는 Node, 스킬 메타데이터 검사 도구에는 PyYAML을 사용한다. 문답형의 상태 잠금은 macOS/Linux 기준이다. 필요한 런타임·이미지·브라우저 도구가 없는 환경에서는 실제 실행 가능 여부를 따로 확인한다.
+공통 이미지·문답·SmartEditor 관련 Python 도우미는 Python 3.11+를 사용하고, 이미지 검사에는 Pillow가 필요하다. SmartEditor 관찰 검사에는 Node, 스킬 메타데이터 검사 도구에는 PyYAML을 사용한다. 월별 시즌 스킬은 Python 3.10+ 표준 라이브러리로 실행하며 Pillow·Node·PyYAML을 런타임 의존성으로 요구하지 않는다. 문답형의 상태 잠금은 macOS/Linux 기준이다.
 
 | 구분 | 현재 기록 | 근거 |
 |---|---|---|
@@ -281,13 +285,41 @@ Python 도우미는 Python 3.11+를 사용하고, 이미지 검사에는 Pillow�
 | 본문 참고 및 전체 회귀 | 실제 본문 5개 참고, Python 274건·Node 28건 통과 기록 | [참고 기능 계획과 결과](../dev-plan/implement_20261012_181310.md) |
 | 이미지 포함 실검증 | 신규 고유 승인 PNG 5개·삽입 5개, 로컬 `package_verified` 및 직접 시각 검수 기록 | 같은 참고 기능 계획의 Phase 4 |
 | 문답형 실제 생성·시각 QA | 해당 문답형 구현 검증에서 미수행으로 기록 | 문답형 계획의 구현·검증 결과. 일반 완성 흐름의 생성 성공으로 대체하지 않음 |
-| 설치 환경 자동 스킬 발동 | 미검증 | 등록·자동 선택 시험 필요 |
+| 월별 시즌 전역 설치·실행 | user 범위·enabled=true 인식과 설치본 추천·실제 원고·이력 저장 확인 | [전역 설치와 실제 작성 기록](seasonal-writer-validation-20261019.md#후속-전역-설치와-실제-작성) |
+| 월별 추천 기본 동작 | 관련 테스트 33개·날짜 없는 12개월 조회 통과 | 같은 검증 문서의 월별 기본 동작 보완 기록 |
+| main 커밋 전 전체 회귀 | 현재 작업 트리 Python 337개·Node 43개 통과 | [커밋 전 확인 기록](seasonal-writer-validation-20261019.md#main-커밋-전-확인) |
+| 새 대화의 암묵적 자동 선택 | 미검증 | 명시 호출·목록 인식과 구분 |
 | 별도 휴대폰/375px 브라우저 검수 | 미검증 | 로컬 파일 URL 정책 제한으로 375px 검수를 완료하지 못함 |
 
-위 숫자는 **이전 구현에서 실행한 검증 기록**이다. 이번 문서 갱신은 기능 변경 없이 문서 링크·기본값·스킬 메타데이터·보호 파일을 확인하며, 전체 회귀나 새 이미지 생성·네이버 저장을 실행한 것으로 표시하지 않는다. `package_verified`도 실제 생성·시각 QA·SmartEditor 저장을 인증하는 상태가 아니다.
+위 숫자는 **각 구현 단계에서 실행한 검증 기록**이다. 이번 문서 갱신에서는 링크·앵커·동작 계약·보호 파일을 대조하며 전체 코드 회귀·이미지 생성·네이버 저장을 다시 수행한 것으로 표시하지 않는다. `package_verified`도 실제 생성·시각 QA·SmartEditor 저장을 인증하는 상태가 아니다.
 
 실검증 원고·PNG는 로컬 `assets/donki-research-20261012-184500/`에 있고 배포용 ZIP은 `outputs/donki-research-20261012-184500.zip`에 있다. `assets/`는 Git 추적 제외이므로 이 문서와 저장소 복제만으로 실검증 이미지가 함께 제공된다고 안내하지 않는다.
 
 문서 수정 시 먼저 각 스킬·reference의 동작 계약과 대조하고, 이 가이드와 README의 스킬 목록·기본값·예제를 함께 갱신한다. 완료된 개발 계획의 당시 테스트 수치는 현재 문서 검사 수치로 바꾸지 않는다.
 
-이번 문서 갱신 검증(2026-10-12): 스킬 7개의 `quick_validate` 통과, README와 이 가이드의 로컬 링크 117개(앵커 포함 링크 20개) 확인, 기존 스킬·reference·코드·테스트 등 보호 파일 114개의 SHA-256 동일, `git diff --check` 통과. 확인 범위는 문서와 기존 파일 보존이며 전체 코드 테스트 재실행·새 이미지 생성·네이버 입력은 포함하지 않는다.
+이전 문서 검증 기록(2026-10-12): 스킬 7개의 `quick_validate` 통과, 로컬 링크 117개(앵커 포함 링크 20개) 확인, 보호 파일 114개의 SHA-256 동일, `git diff --check` 통과. 당시 기록을 현재 문서 검사 수치로 바꾸지 않는다.
+
+
+## 13. 월별 시즌 추천·작성·갱신·이력
+
+[naver-seasonal-blog-writer](../skills/naver-seasonal-blog-writer/SKILL.md)는 월별 원문 데이터와 블로그별 로컬 작성 이력으로 글감을 고른다. 실제 유입·검색량·경쟁도는 수집하지 않는다. 정제 문구 2,793개, 보수적인 주제 그룹 2,728개를 포함하며 검토 대기 문구 847개를 자동 추천에서 제외한다. 글 작성 전 의미 중복과 실제 해당 연도·회차를 확인한다.
+
+기본 목적은 **해당 월 주제 자동 추천 → 주제 선택 → 실제 글 작성**이다. “이번 달 글 추천”, “3월 주제 추천”처럼 월만으로 요청할 수 있다. 월을 생략하면 현재 월, 개수를 생략하면 8개를 제안한다. 추천 결과의 번호를 지정하면 주제를 바꾸지 않고 글 작성·검수·이력 저장으로 이어간다. CLI도 `recommend` 또는 `recommend --month 3`처럼 날짜 없이 실행할 수 있으며, `--as-of`로 재현할 기준일을 지정할 수 있다.
+
+```text
+$naver-seasonal-blog-writer 이번 달에 필요한 주제를 추천해줘.
+$naver-seasonal-blog-writer 3월에 쓸 글감을 추천해줘.
+$naver-seasonal-blog-writer 추천한 2번 주제로 글을 작성하고 출처·검수·이력까지 저장해줘.
+$naver-seasonal-blog-writer 11월 생활정보 글감 8개를 추천해줘. 원고는 아직 쓰지 마.
+$naver-seasonal-blog-writer 추천한 동파 예방 주제로 한 편 작성하고 myblog 이력에 남겨줘.
+$naver-seasonal-blog-writer 기존 동파 예방 글에 외출 전 체크리스트를 보완하고 새 버전으로 저장해줘.
+$naver-seasonal-blog-writer myblog 작성 이력을 보여줘.
+```
+
+현재 에이전트가 공식 자료를 실제 읽고 한국어 원고·주장별 근거·본문 위치가 있는 검수 기록을 작성한다. 도우미는 추천 필터·회차·파일 해시·검수 연결·원고 버전과 이력을 처리한다. 자동 검사가 실제 사실성·독창성을 인증하지 않는다. 검색 도구가 없거나 핵심 사실이 미확인이면 needs_review 초안으로 저장하고 완료 원고로 보고하지 않는다.
+
+스킬 폴더 전체만 복사하면 다른 스킬·원본 엑셀·개발 저장소 없이 동작한다. Codex가 실제 작성·내용 검수를 담당하고 Python 3.10+ 도우미가 데이터·파일·이력 계약을 처리한다. 최신 사실 확인에는 웹 검색·읽기 도구를 사용한다. 사용 조건과 월·연도 해석은 [전용 사용 가이드](naver-seasonal-blog-writer-guide.md)에 정리했다.
+
+2026-10-19에 `~/.codex/skills/naver-seasonal-blog-writer/` 전역 설치와 Codex 목록 인식, 설치본의 월별 추천·부가세 원고·검수·이력 저장을 확인했다. 사용자 원고·이력은 스킬 밖 작업 공간에 저장하며 v0001/v0002로 이전 버전을 보존한다. 새 대화의 암묵적 선택·네이버 발행은 미검증이다. 월별 자동 추천은 요청 시 주제 선정이며 정기 발송 스케줄은 설정하지 않았다.
+
+기존 문체 프로필·본문 참고 5개·시리즈 3,000자·이미지 도우미 조건은 이 독립 경로에 적용하지 않는다. 최초 구현은 신규 30개 포함 Python 334개·Node 43개와 외부 사본의 28개 CLI 명령을 통과했다. 후속 월별 기본 동작 보완은 관련 테스트 33개와 12개월 조회를 통과했다. [최초 개발 계획](../dev-plan/implement_20261019_145740.md), [단계별 검증 결과](seasonal-writer-validation-20261019.md)를 참고한다.

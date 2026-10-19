@@ -4,7 +4,7 @@
 
 <img width="2752" height="1536" alt="나만의_블로그_문체_스타일_스킬" src="https://github.com/user-attachments/assets/1e2d5b71-fdac-4ccd-b873-545a3ea04663" />
 
-### 기존 블로그 본문 참고·제목 선정·글과 이미지 완성부터 시리즈·SmartEditor 임시저장까지 연결하는 스킬 모음
+### 월별 주제 추천·블로그 작성·제목·이미지부터 시리즈·SmartEditor 임시저장까지 연결하는 스킬 모음
 
 <p>
   <a href="./SKILL.md">
@@ -35,13 +35,37 @@
 **문체는 고정하고, 주제만 바꿉니다.**  
 말투·리듬·근거 사용법·문단 구조를 프로필로 분리하고, 명시적으로 요청한 경우에만 실사·창작·인포그래픽을 생성해 원고에 배치합니다.
 
-[기능별 사용 가이드](./docs/skill-capabilities.md) · [현재 상태](#skill-current-status) · [빠른 시작](#-빠른-시작) · [핵심 기능](#-핵심-기능) · [작동 방식](#-작동-방식) · [이미지 구성](#-visual-composer) · [문답형 작성](#naver-blog-wizard) · [키워드 추천](#naver-creator-keyword-recommender) · [제목 최적화](#-제목-최적화-스킬) · [시리즈 작성](#seo-series-writer) · [SmartEditor 초안](#naver-smarteditor-drafter) · [전체 워크플로](#naver-series-workflow) · [대표 프롬프트](#skill-representative-prompts) · [파일 구조](#-파일-구조) · [사용 예시](#-사용-예시)
+[기능별 사용 가이드](./docs/skill-capabilities.md) · [월별 주제 추천](#naver-seasonal-blog-writer) · [현재 상태](#skill-current-status) · [빠른 시작](#-빠른-시작) · [핵심 기능](#-핵심-기능) · [작동 방식](#-작동-방식) · [이미지 구성](#-visual-composer) · [문답형 작성](#naver-blog-wizard) · [키워드 추천](#naver-creator-keyword-recommender) · [제목 최적화](#-제목-최적화-스킬) · [시리즈 작성](#seo-series-writer) · [SmartEditor 초안](#naver-smarteditor-drafter) · [전체 워크플로](#naver-series-workflow) · [대표 프롬프트](#skill-representative-prompts) · [파일 구조](#-파일-구조) · [사용 예시](#-사용-예시)
 
 </div>
 
 ---
 
+<a id="naver-seasonal-blog-writer"></a>
+
+## 월별 시즌 글감과 원고 작성
+
+[naver-seasonal-blog-writer](./skills/naver-seasonal-blog-writer/SKILL.md)는 월별 글감 추천·실제 원고 작성·갱신·블로그별 이력을 담당하는 독립 스킬입니다. 원문 3,109행에서 공백·Unicode 중복을 정리한 2,793개 문구와 보수적인 주제 그룹 2,728개를 포함합니다. 사업명·행사명·교정이 필요한 847개 문구는 검토 대기로 보존하며 자동 추천에서 제외합니다. 최종 추천에서는 같은 질문과 회차가 겹치는지 추가로 검토합니다.
+
+**월만 말하면 그달에 필요한 주제를 자동 추천하고, 선택한 주제로 글을 작성하는 흐름**이 기본입니다. “이번 달 글감 추천해줘”, “3월 주제 추천해줘”만으로 시작하며 “추천한 2번으로 작성해줘”라고 이어서 요청할 수 있습니다. 추천만 요청하면 목록과 이유·가제를 제공하며, 직접 키워드를 준비할 필요가 없습니다.
+
+```text
+$naver-seasonal-blog-writer 이번 달에 필요한 블로그 주제 8개를 추천해줘.
+$naver-seasonal-blog-writer 3월에 쓸 글감을 추천해줘.
+$naver-seasonal-blog-writer 추천한 2번으로 글을 작성하고 출처·검수·이력까지 저장해줘.
+```
+
+위 요청은 각각 따로 실행할 수 있습니다. 월을 생략하면 현재 월, 개수를 생략하면 8개를 제안하며, 추천만 요청하면 원고를 작성하지 않습니다. 지정한 번호는 앞서 추천한 주제로 이어집니다. 설치하지 않은 환경에서는 `skills/naver-seasonal-blog-writer/SKILL.md`를 읽고 적용하도록 요청하면 됩니다.
+
+**스킬 폴더 하나로 독립 실행합니다.** 월별 키워드 데이터·추천 도우미·작성 지침·검수·이력 관리가 포함되어 다른 스킬·원본 엑셀·개발 저장소가 필요하지 않습니다. 실행에는 Codex와 Python 3.10+, 최신 공식 자료 확인에는 웹 검색·읽기 도구가 필요합니다. 사용자 원고와 이력은 스킬 밖 작업 공간에 저장합니다. 고정 문체·참고 글 5개·3,000자 조건은 요구하지 않습니다.
+
+2026-10-19에는 사용자 전역 설치와 Codex의 `user / enabled=true` 인식, 설치본으로 월별 추천·실제 원고·이력 저장을 확인했습니다. 월별 추천 보완 후 관련 테스트 33개와 12개월 조회가 통과했습니다. 새 대화에서의 암묵적 자동 선택과 네이버 발행은 별도 미검증입니다. 여기서 자동 추천은 요청한 월의 글감을 자동 선정하는 기능이며 정기 발송 예약은 설정하지 않았습니다.
+
+[월별 추천·작성 사용 가이드](./docs/naver-seasonal-blog-writer-guide.md) · [설치·원고·격리 검증 결과](./docs/seasonal-writer-validation-20261019.md) · [최초 개발 계획](./dev-plan/implement_20261019_145740.md)
+
 ## 🧾 본문 표시 품질 보강
+
+이 절은 루트 문체·이미지·SmartEditor 흐름의 표시 기준입니다. 월별 시즌 작성 스킬은 자체 작성 지침에 따라 핵심 주장 가까이에 출처를 연결합니다.
 
 출처는 **말미의 클릭형 출처명**으로 정리하고 같은 URL의 반복·보이는 긴 URL을 준비 단계에서 검사합니다. 명시적인 본문 인용 요청은 `--source-placement inline`으로 존중합니다. 비교표·문단 내부 줄바꿈·독립 문단 간격을 보존합니다.
 
@@ -91,6 +115,7 @@
 | 🧾 **Manifest 기반 삽입** | 승인된 로컬 이미지만 명시적 슬롯에 비파괴적으로 삽입합니다. |
 | 👁️ **시각 QA** | 문맥, 사실성, 손·얼굴, 글자, 브랜드, 스타일, 모바일 크롭을 확인합니다. |
 | 📈 **최근 유입 키워드 추천** | 크리에이터 어드바이저의 완료된 최근 7일을 직전 7일과 비교해 주제를 정하고, 요청 시 블로그 홈 제목 구조를 보완해 대표 제목을 안전하게 추천합니다. |
+| 📅 **월별 주제 자동 추천·작성** | 해당 월의 글감을 중복 검토해 추천하고, 선택한 주제로 공식 자료 확인·원고·검수·블로그별 이력 저장까지 독립 수행합니다. |
 | 📚 **SEO 시리즈 작성** | 니치·목차·회차별 문제 해결형 원고를 만들고 사실성과 회차 중복을 검수합니다. |
 | 🧱 **네이버 정본 준비** | Markdown·구조형 JSON을 `naver-post/v1`으로 변환하고 이미지·태그·서식을 검사합니다. |
 | ✍️ **안전한 순차 임시저장** | SmartEditor에서 한 편씩 입력·임시저장·재열기·빈 화면 확인 후 다음 회차로 진행합니다. |
@@ -100,7 +125,7 @@
 
 ## 현재 스킬 구성과 검증 상태
 
-**2026-10-12 현재 작업 트리 기준으로 기본 스킬 1개와 전용 스킬 6개가 구현돼 있습니다.** 기능별 기본값, 복사해서 쓰는 예제, 적용 범위는 [기능별 사용 가이드](./docs/skill-capabilities.md)에서 확인할 수 있습니다. 저장소 변경이 GitHub 배포나 전역 스킬 등록을 뜻하지는 않습니다.
+**2026-10-19 현재 작업 트리 기준으로 기본 스킬 1개와 전용 스킬 7개, 총 8개가 구현돼 있습니다.** 기능별 기본값, 복사해서 쓰는 예제, 적용 범위는 [기능별 사용 가이드](./docs/skill-capabilities.md)에서 확인할 수 있습니다. 이 환경의 월별 시즌 작성 스킬은 전역 설치까지 확인했으며, 다른 환경의 설치와 GitHub 배포는 별도 작업입니다.
 
 | 스킬 | 담당 범위 |
 |---|---|
@@ -108,13 +133,16 @@
 | [naver-blog-wizard](./skills/naver-blog-wizard/SKILL.md) | 단일 글·이미지 옵션 문답, 파일 사용·편집, 선택 변경·중단·재개 |
 | [naver-title](./skills/naver-title/SKILL.md) | 검색형·홈판형·혼합형 제목 생성과 검수 |
 | [naver-creator-keyword-recommender](./skills/naver-creator-keyword-recommender/SKILL.md) | 실제 최근 유입 기반 주제·대표 제목 추천, 요청한 홈 제목 패턴 분석 |
+| [naver-seasonal-blog-writer](./skills/naver-seasonal-blog-writer/SKILL.md) | 이번 달·지정 월 주제 자동 추천, 선택한 글 작성·갱신·검수·블로그별 이력 관리 |
 | [seo-series-writer](./skills/seo-series-writer/SKILL.md) | 연재 목차·회차별 원고 작성·재작성 |
 | [naver-series-workflow](./skills/naver-series-workflow/SKILL.md) | 여러 편의 원고·이미지·검수 패키지 준비와 명시한 임시저장 연결 |
 | [naver-smarteditor-drafter](./skills/naver-smarteditor-drafter/SKILL.md) | 완성 원고 사전검증, 순차 입력·임시저장·재열기 검증 |
 
 최근 구현의 [검증 기록](./dev-plan/implement_20261012_181310.md#phase-4-전체-회귀5개-참고5장-이미지-실검증)은 **Python 274건·Node 28건 통과**, 실제 고유 블로그 본문 5개 참고와 승인된 카드뉴스 5장 생성·본문 삽입을 보고합니다. 이는 이전 구현 검증 기록이며 이번 문서 갱신에서 다시 실행한 테스트 수치가 아닙니다. 문답형의 검증 범위는 [별도 구현 기록](./dev-plan/implement_20261012_151158.md#구현검증-결과)을 참고하세요.
 
-이미지 패키지의 로컬 검사와 실제 생성·시각 검수는 구분합니다. 별도 휴대폰/375px 브라우저 검수, 설치된 환경의 자동 스킬 발동은 아직 확인하지 않았습니다. SmartEditor는 로그인·관찰·업로드 도구를 확인한 실행에서 임시저장까지만 수행하며, 로컬 테스트 통과를 실제 네이버 저장 성공으로 표시하지 않습니다.
+월별 시즌 스킬의 최초 구현에서는 **Python 334개·Node 43개**, 월별 기본 동작 보완 후에는 **관련 테스트 33개**를 통과했습니다. 이 숫자는 각 구현 단계의 실행 기록이며 이번 문서 수정에서 전체 회귀를 다시 실행한 수치는 아닙니다. [검증 결과](./docs/seasonal-writer-validation-20261019.md)에 실행 범위를 구분했습니다.
+
+이미지 패키지의 로컬 검사와 실제 생성·시각 검수는 구분합니다. 별도 휴대폰/375px 브라우저 검수와 새 대화의 암묵적 스킬 선택은 아직 확인하지 않았습니다. SmartEditor는 로그인·관찰·업로드 도구를 확인한 실행에서 임시저장까지만 수행하며, 로컬 테스트 통과를 실제 네이버 저장 성공으로 표시하지 않습니다.
 
 ## 🚀 빠른 시작
 
@@ -569,7 +597,23 @@ $naver-blog-wizard
 
 문답 중에는 `이미지 유형만 카드뉴스형으로 바꿔줘`, `잠시 중단해줘`, `이전 세션을 이어서 진행해줘`처럼 범위를 지정할 수 있습니다. 문체 인터뷰·시리즈 작성·SmartEditor 입력은 각각 별도 스킬의 범위입니다.
 
-#### 8. 전체 워크플로 — 최근 키워드 선정부터 글 3편 임시저장까지
+#### 8. `naver-seasonal-blog-writer` — 월별 주제 추천 후 선택한 글 작성
+
+```text
+$naver-seasonal-blog-writer
+이번 달에 필요한 블로그 주제 8개를 중복 없이 추천해줘.
+추천 이유·가제·작성 시점·확인할 핵심 사실도 알려줘.
+```
+
+```text
+$naver-seasonal-blog-writer
+추천한 2번 주제로 초보자를 위한 글을 작성해줘.
+최신 공식 자료를 확인하고 원고·출처·검수 결과와 myblog 작성 이력을 저장해줘.
+```
+
+월만 지정한 추천과 실제 글쓰기를 나누어 요청할 수 있습니다. “3월 주제 추천”, “다음 달 생활정보 5개”, “12월 월간 계획”도 지원합니다. 독립 실행 조건·날짜 해석·저장 파일은 [전용 가이드](./docs/naver-seasonal-blog-writer-guide.md)를 참고하세요.
+
+#### 9. 전체 워크플로 — 최근 키워드 선정부터 글 3편 임시저장까지
 
 아래 프롬프트는 `naver-creator-keyword-recommender` → `naver-title` → `naver-blog-style` 또는 `seo-series-writer` → `naver-series-workflow` → `naver-smarteditor-drafter`를 하나의 안전한 작업으로 연결하는 대표 예시입니다.
 
@@ -1084,6 +1128,8 @@ python3.11 skills/naver-series-workflow/scripts/prepare_series.py status \
 │   └── ⚙️ openai.yaml
 ├── 📁 docs
 │   ├── 📖 skill-capabilities.md
+│   ├── 📖 naver-seasonal-blog-writer-guide.md
+│   ├── ✅ seasonal-writer-validation-20261019.md
 │   └── 👤 naver-blog-style-profile.md
 ├── 📁 dev-plan                       # Phase별 개발 계획과 검증 기록
 ├── 📁 references
@@ -1117,6 +1163,10 @@ python3.11 skills/naver-series-workflow/scripts/prepare_series.py status \
 │   ├── 🧪 test_smarteditor_checks.mjs
 │   ├── 🧪 test_creator_keyword_recommender.py
 │   ├── 🧪 test_blog_home_title_analyzer.py
+│   ├── 🧪 test_seasonal_catalog.py
+│   ├── 🧪 test_seasonal_history.py
+│   ├── 🧪 test_seasonal_article.py
+│   ├── 🧪 test_seasonal_package.py
 │   └── 📁 fixtures
 ├── 📁 skills
 │   ├── 📁 naver-blog-wizard
@@ -1145,6 +1195,22 @@ python3.11 skills/naver-series-workflow/scripts/prepare_series.py status \
 │   │       ├── 🛡️ scoring-and-safety.md
 │   │       ├── 🏷️ title-handoff.md
 │   │       └── 📚 examples.md
+│   ├── 📁 naver-seasonal-blog-writer
+│   │   ├── 🧠 SKILL.md
+│   │   ├── 📁 agents
+│   │   │   └── ⚙️ openai.yaml
+│   │   ├── 📁 data
+│   │   │   ├── keywords.jsonl
+│   │   │   ├── topics.jsonl
+│   │   │   └── source-manifest.json
+│   │   ├── 📁 scripts
+│   │   │   ├── catalog.py
+│   │   │   ├── article.py
+│   │   │   └── history.py
+│   │   └── 📁 references
+│   │       ├── monthly-selection.md
+│   │       ├── article-writing.md
+│   │       └── data-contract.md
 │   ├── 📁 naver-title
 │   │   ├── 🧠 SKILL.md
 │   │   ├── 📁 agents
@@ -1198,7 +1264,9 @@ python3.11 skills/naver-series-workflow/scripts/prepare_series.py status \
 | 파일 | 역할 |
 |---|---|
 | [`SKILL.md`](./SKILL.md) | 단일 글 작성·재작성, 본문 참고, 제목·이미지 연결과 문체 인터뷰를 정의하는 핵심 스킬 |
-| [`docs/skill-capabilities.md`](./docs/skill-capabilities.md) | 현재 7개 스킬의 기능·기본값·사용 예제·검증 범위 |
+| [`docs/skill-capabilities.md`](./docs/skill-capabilities.md) | 현재 8개 스킬의 기능·기본값·사용 예제·검증 범위 |
+| [`docs/naver-seasonal-blog-writer-guide.md`](./docs/naver-seasonal-blog-writer-guide.md) | 월별 주제 추천·선택 후 작성·독립 실행·이력·CLI 사용 가이드 |
+| [`docs/seasonal-writer-validation-20261019.md`](./docs/seasonal-writer-validation-20261019.md) | 월별 스킬의 최초 격리 검증과 후속 전역 설치·실제 작성·기본 동작 검증 기록 |
 | [`docs/naver-blog-style-profile.md`](./docs/naver-blog-style-profile.md) | 확인된 개인 문체와 작성 규칙을 저장하는 재사용 프로필 |
 | [`references/choice-question-bank.md`](./references/choice-question-bank.md) | 7개 차원의 선택형 질문과 샘플 보정 문항 |
 | [`references/visual-composition-workflow.md`](./references/visual-composition-workflow.md) | 이미지 위치 선정, 생성, QA, 삽입 순서 |
@@ -1218,6 +1286,7 @@ python3.11 skills/naver-series-workflow/scripts/prepare_series.py status \
 | [`skills/naver-creator-keyword-recommender/`](./skills/naver-creator-keyword-recommender/) | 최근·직전 검색 유입을 비교하고 요청 시 블로그 홈 제목 구조를 별도로 보완하는 독립 스킬 |
 | [`skills/naver-creator-keyword-recommender/scripts/analyze_snapshots.py`](./skills/naver-creator-keyword-recommender/scripts/analyze_snapshots.py) | 로컬 관찰 JSON을 검증하고 근거 점수·제목 패턴 집계를 생성하는 결정적 CLI |
 | [`skills/naver-creator-keyword-recommender/scripts/analyze_home_titles.py`](./skills/naver-creator-keyword-recommender/scripts/analyze_home_titles.py) | 블로그 홈 제목 스냅샷을 검증하고 원문 없는 구조·길이·민감도 집계를 생성하는 결정적 CLI |
+| [`skills/naver-seasonal-blog-writer/`](./skills/naver-seasonal-blog-writer/) | 폴더 하나에 데이터·추천·작성 지침·검수·이력을 포함한 독립 월별 시즌 스킬 |
 | [`skills/naver-title/`](./skills/naver-title/) | 검색형·홈판형·혼합형 제목을 생성하고 사실성·키워드 남용·클릭베이트를 검수하는 독립 스킬 |
 | [`skills/seo-series-writer/`](./skills/seo-series-writer/) | 니치 선정·시리즈 목차·3,000자 완성형 원고·6개 작성 프로필·사실성 검수의 독립 스킬 |
 | [`skills/naver-smarteditor-drafter/`](./skills/naver-smarteditor-drafter/) | 완성 원고를 검증하고 SmartEditor에 순차 입력·임시저장하는 독립 스킬 |
@@ -1227,7 +1296,7 @@ python3.11 skills/naver-series-workflow/scripts/prepare_series.py status \
 | [`skills/naver-series-workflow/`](./skills/naver-series-workflow/) | 시리즈 원고·이미지 준비, 검수 게이트, SmartEditor 순차 임시저장·재개를 연결하는 총괄 스킬 |
 | [`skills/naver-series-workflow/scripts/prepare_series.py`](./skills/naver-series-workflow/scripts/prepare_series.py) | 레거시 v1과 완성형 `naver-series/v2` manifest를 검사하고 불변 준비 run과 분리된 품질 상태를 만드는 CLI |
 | [`skills/naver-series-workflow/scripts/content_metrics.py`](./skills/naver-series-workflow/scripts/content_metrics.py) | 제목·태그·출처·이미지 정보를 제외한 공개 본문 글자 수를 결정적으로 계산하는 모듈 |
-| [`.gitignore`](./.gitignore) | `.DS_Store`, 로컬 이미지·전달 패키지·SmartEditor 실행 이력과 비공개 크리에이터 어드바이저 관찰 데이터를 버전 관리에서 제외 |
+| [`.gitignore`](./.gitignore) | 로컬 이미지·전달 패키지·SmartEditor 실행 이력·비공개 유입 관찰·월별 스킬의 개인 원고와 작성 이력을 버전 관리에서 제외 |
 | `assets/` | 생성한 대표 이미지와 본문 이미지를 로컬에서 보관하는 폴더 |
 
 ## 🧪 프로필 적용 품질 점검
@@ -1305,6 +1374,18 @@ python3.11 skills/naver-series-workflow/scripts/prepare_series.py status \
 ### 저장소를 받으면 모든 스킬이 자동 등록되나요?
 
 아닙니다. 저장소 직접 사용에서는 담당 SKILL.md를 읽어 적용하도록 요청합니다. `$스킬명` 호출은 설치·등록된 환경 기준이며, 전역 등록과 자동 스킬 선택은 별도로 확인해야 합니다.
+
+### 월만 지정해서 글감을 추천받을 수 있나요?
+
+`$naver-seasonal-blog-writer 이번 달 글감 추천해줘` 또는 `3월 주제 추천해줘`로 시작할 수 있습니다. 기본 8개에 추천 이유·제목·작성 시점을 붙이고 작성 이력과 의미 중복을 검토합니다. `추천한 2번으로 작성해줘`라고 하면 해당 주제로 원고·출처·검수·이력을 저장합니다.
+
+### 월별 시즌 스킬은 폴더 하나만 복사해도 되나요?
+
+네. `skills/naver-seasonal-blog-writer/` 전체에 필요한 정제 데이터·도우미·지침이 들어 있습니다. 다른 스킬·원본 엑셀·루트 저장소 파일을 요구하지 않으며, Codex와 Python 3.10+, 최신 공식 자료를 확인할 웹 도구를 사용합니다. 원고·이력은 별도 사용자 작업 공간에 저장합니다. [실행 조건과 파일 구조](./docs/naver-seasonal-blog-writer-guide.md#독립-실행-조건)를 참고하세요.
+
+### 매월 먼저 추천 메시지를 보내나요?
+
+현재 기본은 요청한 월의 글감을 자동 선정하는 방식입니다. 월별 정기 발송이나 예약 발행 스케줄은 설정하지 않았습니다.
 
 ### 프로필이 있으면 인터뷰를 다시 해야 하나요?
 
