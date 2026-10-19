@@ -7,3 +7,5 @@ __pycache__/
 *.pyc
 .creator-advisor-private/
 outputs/creator-advisor-private/
+/.seasonal-writer/
+/articles/

@@ -1,0 +1,4 @@
+interface:
+  display_name: "월별 주제 추천·블로그 작성"
+  short_description: "해당 월에 필요한 주제를 자동 추천하고 선택한 글의 작성·갱신·이력 관리"
+  default_prompt: "$naver-seasonal-blog-writer 이번 달에 필요한 블로그 주제를 중복 없이 8개 추천하고, 추천 이유와 제목도 제안해줘."
