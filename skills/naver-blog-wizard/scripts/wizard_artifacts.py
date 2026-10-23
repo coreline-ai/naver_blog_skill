@@ -64,7 +64,7 @@ import shutil
 import tempfile
 import uuid
 from insert_article_images import RAW_MARKER_RE, _extract_marker_ids, compose_article_data
-from build_blog_image_prompts import normalize_slots
+from build_blog_image_prompts import normalize_slots, normalize_aspect_ratios, validate_asset_aspect
 
 def _atomic_publish(path,data):
     path=Path(path); path.parent.mkdir(parents=True,exist_ok=True)
@@ -159,6 +159,8 @@ def compile_image_request(s,slot_article,slots):
             'article_type':_option(s,'article_type','information'),'format_preset':_option(s,'format_preset','auto'),
             'additional_requirements':'' if _option(s,'additional_requirements')=='none' else _option(s,'additional_requirements',''),
             'slots':normalize_slots(slots)}
+    if 'aspect_ratios' in s['confirmed_options']:
+        result['aspect_ratios'] = normalize_aspect_ratios(_option(s,'aspect_ratios'))
     if _option(s,'reference_use')=='yes':
         path=local_path(_option(s,'reference_path'),root); inspect_asset(path,root)
         result['reference']={'path':str(path),'instructions':'' if _option(s,'reference_instructions')=='default' else _option(s,'reference_instructions','')}
@@ -243,9 +245,8 @@ def bind_asset(s,slot_id,path,provenance):
     for other in s['assets']:
         if other['slot_id']!=slot_id and asset_matches(s,other) and other['inspection']['sha256']==inspection['sha256']:
             raise BuildError('different slots need unique actual files','DUPLICATE_ASSET')
-    if binding['presentation']=='info-slide':
-        error=abs(inspection['width']*5-inspection['height']*4)
-        if error>4 or error*1000>inspection['height']*4: raise BuildError('slide must have 4:5 ratio','SLIDE_ASPECT_MISMATCH')
+    if entry is not None:
+        validate_asset_aspect(entry, inspection)
     return {'slot_id':slot_id,'inspection':inspection,'binding':binding,'provenance':provenance,
             'origin_plan':(s.get('image_plan') or {}).get('sha256'),'qa':None,'caption':'','corrections':0}
 

@@ -23,13 +23,13 @@ ENUMS = {
  'image_review': ('use','edit','pause'),
  'failure_resolution': ('change-options','use-files','pause'),
  'article_change': ('topic','source_article','audience','article_type','tone','length','format_preset'),
- 'image_change': ('presentation','requested_count','additional_requirements','reference_use'),
+ 'image_change': ('presentation','requested_count','additional_requirements','reference_use','aspect_ratios'),
 }
 TEXT_KEYS = {'topic','source_article','audience','tone','experience_basis','additional_requirements',
              'reference_path','reference_instructions','edit_target','edit_instruction','edit_slot'}
-OPTION_KEYS = set(ENUMS) | TEXT_KEYS | {'length','requested_count'}
+OPTION_KEYS = set(ENUMS) | TEXT_KEYS | {'length','requested_count','aspect_ratios'}
 WRITE_KEYS = {'task_mode','topic','source_article','audience','article_type','tone','length','format_preset','experience_basis'}
-IMAGE_KEYS = {'image_action','presentation','requested_count','additional_requirements','reference_use','reference_path','reference_instructions'}
+IMAGE_KEYS = {'image_action','presentation','requested_count','additional_requirements','reference_use','reference_path','reference_instructions','aspect_ratios'}
 TITLES = {
  'task_mode':'어떤 작업을 진행할까요?', 'topic':'이번 글의 주제는 무엇인가요?',
  'source_article':'사용할 원고 파일은 어디에 있나요?', 'audience':'누가 읽는 글인가요?',
@@ -39,6 +39,7 @@ TITLES = {
  'article_review':'작성한 원고를 어떻게 처리할까요?', 'article_change':'어떤 작성 조건을 변경할까요?',
  'image_action':'이미지를 어떻게 처리할까요?', 'presentation':'이미지 표현 유형을 선택해 주세요.',
  'requested_count':'표지를 포함해 몇 장으로 구성할까요?', 'additional_requirements':'이미지에 추가할 요구사항이 있나요?',
+ 'aspect_ratios':'대표·본문 이미지 비율을 어떻게 지정할까요?',
  'reference_use':'참고 이미지를 사용할까요?', 'reference_path':'참고 이미지 파일은 어디에 있나요?',
  'reference_instructions':'참고 이미지에서 무엇을 반영할까요?', 'image_plan_review':'이미지 구성을 사용할까요?',
  'image_change':'어떤 이미지 조건을 변경할까요?', 'image_review':'검수한 이미지를 어떻게 처리할까요?',
@@ -50,10 +51,12 @@ CHOICES = {
  'length': ('short','medium','long'), 'requested_count': (1,3,5,'auto'),
  'additional_requirements': ('none',), 'reference_instructions': ('default',),
  'experience_basis': ('source-based',),
+ 'aspect_ratios': ({'cover':'1:1','inline':'16:9'}, {}),
 }
 LABELS = {'new':'새 글','rewrite':'원고 재작성','images-only':'원고 유지+이미지','edit-existing':'기존 이미지 편집',
  'none':'이미지 없음','prompt-only':'프롬프트만','generate':'이미지 생성','use-files':'내 파일 사용',
  'standard':'일반 이미지','info-slide':'정보 슬라이드 / 카드뉴스','mixed':'일반 표지+정보 슬라이드',
+ 'aspect_ratios':'대표·본문 비율',
  'auto':'자동 선택','use':'사용','revise':'원고 수정','change':'조건 변경','edit':'특정 이미지 편집','pause':'중단',
  'short':'짧게(약 800~1,200자)','medium':'보통(약 1,500~2,200자)','long':'자세히(약 2,500~3,500자)',
  'beginner':'초보 독자','general':'일반 독자','experienced':'경험 있는 독자',
@@ -88,6 +91,10 @@ def normalize_option(key,v):
             raise WizardError('invalid slot metadata','INVALID_ANSWER')
         return v.strip()
     if key not in OPTION_KEYS: raise WizardError('unknown option: '+key,'INVALID_ANSWER')
+    if key=='aspect_ratios':
+        from wizard_artifacts import normalize_aspect_ratios
+        try: return normalize_aspect_ratios(v)
+        except ValueError as exc: raise WizardError(str(exc),'INVALID_ANSWER') from exc
     if key in ENUMS:
         if not isinstance(v,str) or v not in ENUMS[key]: raise WizardError('unsupported option: '+key,'INVALID_ANSWER')
     elif key=='requested_count':
@@ -149,7 +156,9 @@ def _question(s,key,options=None):
     vals=list(options if options is not None else ENUMS.get(key,CHOICES.get(key,())))[:5]
     if key=='image_action' and s['task_mode']=='images-only': vals=[v for v in vals if v!='none']
     return {'kind':'question','revision':s['revision'],'question_id':f"{key}:r{s['revision']}",'key':key,
-            'title':TITLES[key],'options':[{'value':v,'label':('추천 구성(5장)' if key=='requested_count' and v=='auto' else '추가 요구 없음' if key=='additional_requirements' and v=='none' else LABELS.get(v,str(v)))} for v in vals],'accepts_custom':True}
+            'title':TITLES[key],'options':[{'value':v,'label':
+                ('대표 1:1 · 본문 16:9' if v else '비율 지정 해제(기존 기본값)') if key=='aspect_ratios' else
+                ('추천 구성(5장)' if key=='requested_count' and v=='auto' else '추가 요구 없음' if key=='additional_requirements' and v=='none' else LABELS.get(v,str(v)))} for v in vals],'accepts_custom':True}
 
 def _action(s,name,**data):
     return {'kind':'action','revision':s['revision'],'action':name,**data}
@@ -187,6 +196,8 @@ def next_step(s,artifact_report=None):
     if review!='use': return _question(s,'article_review')
     if 'image_action' not in s['confirmed_options']: return _question(s,'image_action')
     if value(s,'image_action')=='none': return _complete(s,'text-only')
+    if value(s,'image_change')=='aspect_ratios' and 'aspect_ratios' not in s['confirmed_options']:
+        return _question(s,'aspect_ratios')
     for key in ('presentation','requested_count','additional_requirements','reference_use'):
         if key not in s['confirmed_options']: return _question(s,key)
     if value(s,'reference_use')=='yes':
@@ -274,6 +285,7 @@ def apply_answer(s,question_id,v,expected_revision):
     if key in {'article_change','image_change'}:
         selected=normalize_option(key,v)
         _drop(n,selected,'article_review' if key=='article_change' else 'image_plan_review'); _invalidate(n,selected)
+        if selected=='aspect_ratios': _set_option(n,'image_change',selected)
     else:
         _set_option(n,key,v)
         if key=='edit_slot':

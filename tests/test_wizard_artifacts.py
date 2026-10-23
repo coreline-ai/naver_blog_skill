@@ -27,9 +27,10 @@ class WizardArtifactTests(unittest.TestCase):
         self.assertEqual(source.read_bytes(),original)
     def answer(self,s,v): return w.apply_answer(s,w.next_step(s)['question_id'],v,s['revision'])
     def record(self,s,kind,p): return w.record_event(s,{'type':kind,'payload':p},s['revision'])
-    def plan(self,n=1,presentation='standard',action='use-files'):
+    def plan(self,n=1,presentation='standard',action='use-files',aspect_ratios=None):
         s=w.new_session(self.work,{'task_mode':'images-only','source_article':'source.md','image_action':action,
-            'presentation':presentation,'requested_count':n,'additional_requirements':'none','reference_use':'no'})
+            'presentation':presentation,'requested_count':n,'additional_requirements':'none','reference_use':'no',
+            **({'aspect_ratios':aspect_ratios} if aspect_ratios is not None else {})})
         root=a.run_root(s); root.mkdir(parents=True)
         text='# 식물 관리\n\n햇빛은 잎의 상태에 맞게 조절합니다. 물은 흙이 마른 뒤 줍니다.\n\n'
         details=['빛이 닿는 방향을 확인합니다. 잎이 빛을 받도록 위치를 조절합니다.','실내 공기가 통하도록 둡니다. 찬 바람이 직접 닿지 않게 합니다.','화분 아래 배수 구멍을 확인합니다. 고인 물은 비워 줍니다.','마른 잎을 살펴봅니다. 손상된 잎을 정리합니다.']
@@ -54,17 +55,74 @@ class WizardArtifactTests(unittest.TestCase):
     def image(self,s,provenance='user-file',color=None):
         step=w.next_step(s); ident=step['slot_id']; root=a.run_root(s)
         file=a.version_path(root,ident,'.png')
-        Image.new('RGB',(40,50),color or ('red' if ident=='cover' else 'blue')).save(file)
+        entry=next((e for e in a.plan_entries(s) if e['id']==ident),{})
+        size={'1:1':(80,80),'16:9':(160,90)}.get(entry.get('aspect_ratio'),(40,50))
+        Image.new('RGB',size,color or ('red' if ident=='cover' else 'blue')).save(file)
         if provenance=='user-file': return self.record(s,'effect-result',{'slot_id':ident,'path':str(file),'provenance':provenance})
         s=self.record(s,'effect-intent',{'slot_id':ident})
         return self.record(s,'effect-result',{'slot_id':ident,'path':str(file),'provenance':provenance,'effect_id':s['effect']['id'],'tool_result':'test fixture simulates a tool return; not live generation'})
     def qa(self,s,passed=True):
         step=w.next_step(s); asset=step['asset']
         return self.record(s,'visual-review',{'slot_id':step['slot_id'],'asset_sha256':asset['inspection']['sha256'],'passed':passed,'notes':'Test fixture review metadata; live visual QA not performed.'})
-    def ready(self,n=1,presentation='standard'):
-        s=self.plan(n,presentation)
+    def ready(self,n=1,presentation='standard',aspect_ratios=None):
+        s=self.plan(n,presentation,aspect_ratios=aspect_ratios)
         for i in range(n): s=self.qa(self.image(s,color=('red','blue','green','yellow','purple')[i]))
         return self.answer(s,'use')
+
+    def test_role_ratio_slides_import_review_and_compose_exact_five(self):
+        s=self.ready(5,'info-slide',{'cover':'1:1','inline':'16:9'})
+        original=Path(s['article']['path']).read_bytes()
+        entries=a.plan_entries(s)
+        self.assertEqual([e['aspect_ratio'] for e in entries],['1:1']+['16:9']*4)
+        self.assertTrue(all(e['presentation']=='info-slide' for e in entries))
+        self.assertEqual(a.read_json(s['image_plan']['request_path'])['aspect_ratios'],{'cover':'1:1','inline':'16:9'})
+        payload=a.compose_and_verify(s,a.run_root(s))
+        s=self.record(s,'package',payload)
+        self.assertEqual(w.next_step(s)['kind'],'complete')
+        self.assertEqual(a.read_json(payload['completion_path'])['status'],'package_verified')
+        self.assertEqual(Path(s['article']['path']).read_bytes(),original)
+
+    def test_wrong_ratio_is_rejected_before_wizard_visual_review(self):
+        s=self.plan(3,'info-slide',aspect_ratios={'cover':'1:1','inline':'16:9'})
+        root=a.run_root(s); bad=root/'portrait.png'
+        Image.new('RGB',(40,50),'orange').save(bad)
+        with self.assertRaises(BuildError) as exc:
+            a.bind_asset(s,'cover',bad,'user-file')
+        self.assertEqual(exc.exception.code,'SLIDE_ASPECT_MISMATCH')
+        s=self.qa(self.image(s))
+        with self.assertRaises(BuildError): a.bind_asset(s,'section-1',bad,'user-file')
+
+    def test_ratio_change_preserves_article_and_files_but_invalidates_completed_package(self):
+        s=self.ready(3,'info-slide',{'cover':'1:1','inline':'16:9'})
+        payload=a.compose_and_verify(s,a.run_root(s)); s=self.record(s,'package',payload)
+        old=copy.deepcopy(s)
+        files={Path(s['article']['path']):Path(s['article']['path']).read_bytes()}
+        files.update({Path(x['inspection']['path']):Path(x['inspection']['path']).read_bytes() for x in s['assets']})
+        changed=w.apply_change(s,'aspect_ratios',{'cover':'4:5','inline':'16:9'},s['revision'])
+        self.assertEqual(changed['article'],old['article'])
+        self.assertIsNone(changed['image_plan']); self.assertIsNone(changed['completion'])
+        self.assertTrue(all(p.read_bytes()==data for p,data in files.items()))
+        self.assertEqual(w.next_step(changed)['action'],'design_slots')
+        changed=self.record(changed,'slots',{'article_path':old['slot_selection']['path'],'slots_path':old['slot_selection']['slots_path']})
+        prep=a.prepare_plan(changed); changed=self.record(changed,'plan',prep['payload'])
+        changed=self.answer(changed,'use')
+        self.assertFalse(a.asset_matches(changed,old['assets'][0]))
+        self.assertTrue(a.asset_matches(changed,old['assets'][1]))
+        self.assertEqual(w.next_step(changed)['action'],'import_image')
+        self.assertEqual(w.next_step(changed)['slot_id'],'cover')
+
+    def test_image_change_menu_can_ask_optional_role_ratio_without_new_required_question(self):
+        s=self.plan(3,'info-slide')
+        self.assertNotIn('aspect_ratios',s['confirmed_options'])
+        s=w.apply_change(s,'image_plan_review','change',s['revision'])
+        step=w.next_step(s)
+        self.assertEqual(step['key'],'image_change')
+        self.assertIn('aspect_ratios',[o['value'] for o in step['options']])
+        s=self.answer(s,'aspect_ratios')
+        self.assertEqual(w.next_step(s)['key'],'aspect_ratios')
+        self.assertEqual(w.next_step(s)['options'][0]['value'],{'cover':'1:1','inline':'16:9'})
+        s=self.answer(s,{'cover':'1:1','inline':'16:9'})
+        self.assertEqual(w.next_step(s)['action'],'design_slots')
     def test_A02_one_slide_no_series_floor(self):
         s=self.plan(presentation='info-slide'); entries=a.plan_entries(s)
         self.assertEqual(len(entries),1); self.assertEqual(entries[0]['presentation'],'info-slide')

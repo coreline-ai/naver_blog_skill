@@ -18,6 +18,7 @@
 | image_action | none/prompt-only/generate/use-files | images-only는 none 제외 |
 | presentation | standard/info-slide/mixed | 이미지 처리 시 |
 | requested_count | 1/3/5/auto 또는 양의 정수 | auto 선택은 총 5장 |
+| aspect_ratios | 선택 객체: cover/inline → 4:5·1:1·16:9 | 최초 요청·직접 change 또는 비율 변경 메뉴에서만 확인. 기존 세션의 필수 질문 아님 |
 | additional_requirements | none 또는 자유 입력 | 미확정 시만 |
 | reference_use | no/yes | yes → path/instructions |
 | reference_path | 실제 이미지 경로 | 참조 사용 시 |
@@ -32,4 +33,4 @@
 
 위치 불명확 시 세션 생성 전 저장 위치만 확인한다. 최초 복수 옵션은 initial-options로 전달한다. 모호한 복수 선택은 같은 질문에서 확인한다. 문구 전체가 아니라 key/value·분기·행동을 검증한다.
 
-정보 슬라이드는 표지까지 4:5 한국어 제목·요점 2~3개, 권장 1080×1350이다. helper는 제목 34/요점 52 UTF-16 units의 첫 유효 문장을 사용한다. 같은 소제목의 동일 요점은 재설계한다. 원고 유지 모드에서 재구성이 필요하면 수량 조정/재작성 전환을 확인한다.
+정보 슬라이드는 표지까지 한국어 제목·요점 2~3개를 사용하며 비율 미지정 시 4:5·권장 1080×1350이다. `aspect_ratios={"cover":"1:1","inline":"16:9"}`를 지정하면 표지는 정사각형, 본문은 가로형 정보 슬라이드로 만든다. 한 역할만 지정하면 다른 정보 슬라이드는 4:5이며 빈 객체는 비율 지정을 해제한다. 비율 선택을 하지 않은 기존 세션에 추가 질문을 끼우지 않는다. helper는 제목 34/요점 52 UTF-16 units의 첫 유효 문장을 사용한다. 같은 소제목의 동일 요점은 재설계한다. 원고 유지 모드에서 재구성이 필요하면 수량 조정/재작성 전환을 확인한다.

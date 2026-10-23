@@ -139,6 +139,8 @@ Do not leave a final project image only in the generator's default output folder
 
 ## 8. Visual QA
 
+Honor explicit cover/inline ratios through `aspect_ratios` in the [prompt contract](blog-image-prompt-contract.md). Information slides default to 4:5; a requested 1:1 cover and 16:9 inline set remains `info-slide`, including its cover. Check the actual dimensions and readable layout for each role. Recommended pixel sizes are not mandatory resolutions. The common completion and wizard asset checks use the same pixel-rounding tolerance; file verification does not replace visual QA.
+
 Review each asset against these categories:
 
 | Category | Pass condition | Common failure |

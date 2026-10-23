@@ -30,6 +30,11 @@ from insert_article_images import (ALLOWED_MODES, SLOT_ID_RE, _extract_marker_id
 REQUEST_SCHEMA = 'naver-blog-image-request/v1'
 PLAN_SCHEMA = 'naver-blog-image-plan/v1'
 PRESENTATIONS = {'standard', 'info-slide', 'mixed'}
+ASPECT_RATIOS = {
+    '4:5': ('세로형', '1080×1350'),
+    '1:1': ('정사각형', '1080×1080'),
+    '16:9': ('가로형', '1920×1080'),
+}
 ARTICLE_TYPES = {'information', 'review', 'comparison', 'howto', 'place', 'story', 'checklist', 'auto'}
 PRESETS = {'auto', 'clean', 'magazine', 'review', 'comparison', 'checklist', 'emotional'}
 STYLE_TYPES = {'expert':'information', 'friendly':'information', 'story':'story',
@@ -53,6 +58,26 @@ def fields(value: Any, required: set[str], optional: set[str], label: str) -> di
     if not isinstance(value, dict) or required - value.keys() or value.keys() - required - optional:
         raise BuildError(f'{label}: missing or unsupported fields', 'INVALID_CONTRACT')
     return value
+
+
+def normalize_aspect_ratios(value: Any) -> dict[str, str]:
+    ratios = fields(value, set(), {'cover', 'inline'}, 'aspect_ratios')
+    if any(not isinstance(ratio, str) or ratio not in ASPECT_RATIOS for ratio in ratios.values()):
+        raise BuildError('aspect_ratios: supported ratios are 4:5, 1:1 and 16:9', 'INVALID_CONTRACT')
+    return dict(ratios)
+
+
+def validate_asset_aspect(entry: dict, asset: dict) -> None:
+    ratio = entry.get('aspect_ratio') or ('4:5' if entry['presentation'] == 'info-slide' else None)
+    if ratio is None:
+        return
+    numerator, denominator = (int(part) for part in ratio.split(':'))
+    # Native output may round the requested dimensions. Preserve the existing
+    # cap of one vertical pixel AND 0.1% relative error for every supported ratio.
+    error = abs(asset['width'] * denominator - asset['height'] * numerator)
+    if error > numerator or error * 1000 > asset['height'] * numerator:
+        code = 'SLIDE_ASPECT_MISMATCH' if entry['presentation'] == 'info-slide' else 'IMAGE_ASPECT_MISMATCH'
+        raise BuildError(f"{entry['id']}: image must have a {ratio} ratio (pixel rounding <=1px and <=0.1%)", code)
 
 
 def plain_text(value: str) -> str:
@@ -248,18 +273,28 @@ def english_image_prompt(data: dict) -> str:
 
 def generation_prompt(entry: dict, draft: dict, *, presentation: str = 'standard',
                       article_type: str = 'information', preset: str = 'auto', language: str = 'ko',
-                      additional: str = '', reference_present: bool = False, reference_instructions: str = '') -> str:
+                      additional: str = '', reference_present: bool = False, reference_instructions: str = '',
+                      aspect_ratio: str | None = None) -> str:
     if language == 'en':
         public_draft = {k:v for k,v in draft.items() if not k.startswith('_')}
         return english_image_prompt({'scene':entry, 'draft':public_draft, 'style':presentation,
-                                     'requirements':additional, 'referenceInstructions':reference_instructions, 'format':EN_FORMAT})
+                                     'requirements':additional, 'referenceInstructions':reference_instructions, 'format':EN_FORMAT,
+                                     **({'aspectRatio':aspect_ratio,
+                                         'canvasLayout':'Landscape; arrange key points in columns with readable margins.' if aspect_ratio == '16:9'
+                                                        else 'Square canvas with readable margins.' if aspect_ratio == '1:1'
+                                                        else 'Portrait canvas with readable margins.'} if aspect_ratio else {})})
     mode = presentation_mode(presentation, entry)
     if mode == 'info-slide':
         brief = slide_brief(entry, draft)
         points = '\n'.join(f'요점 {i+1}: {point}' for i,point in enumerate(brief['points'])) or '요점: 제공된 본문 근거에서 핵심 내용만 짧게 정리'
+        ratio = aspect_ratio or '4:5'
+        orientation, recommended = ASPECT_RATIOS[ratio]
+        layout = LAYOUTS[layout_key(article_type, preset)]
+        if ratio == '16:9' and layout_key(article_type, preset) == 'default':
+            layout = '핵심 요점을 왼쪽에서 오른쪽으로 읽는 2~3열 정보 카드로 구성하고 가로 공간을 활용합니다.'
         presentation_block = f"""[이미지 유형]
 - 정보 슬라이드형 카드뉴스
-- 네이버 블로그 모바일 화면에 맞는 4:5 세로형 비율, 권장 크기 1080×1350
+- 네이버 블로그 모바일 화면에 맞는 {ratio} {orientation} 비율, 권장 크기 {recommended}
 
 [슬라이드에 표시할 원고]
 제목: {brief['title']}
@@ -267,13 +302,16 @@ def generation_prompt(entry: dict, draft: dict, *, presentation: str = 'standard
 본문 근거: {brief['source'] or '블로그 제목과 요약에 포함된 정보만 사용'}
 
 [슬라이드 레이아웃]
-- {LAYOUTS[layout_key(article_type, preset)]}
+- {layout}
 - 상단에 제목, 중앙에 핵심 요점 2~3개, 하단에는 충분한 여백을 둡니다.
 - 각 요점은 구분되는 카드, 아이콘 또는 번호로 배치하고 한눈에 읽히는 정보 계층을 만듭니다.
 - 한국어 문구는 위 원고의 의미와 맞춤법을 유지하고, 임의의 영문·숫자·워터마크·로고를 추가하지 않습니다.
 - 본문 근거에 없는 가격, 수치, 효능, 순위, 경험을 새로 만들지 않습니다."""
     else:
         presentation_block = '[이미지 유형]\n- 일반 블로그 이미지\n- 사진 또는 일러스트 중심으로 소재와 분위기를 직관적으로 표현하고, 이미지 안의 글자는 넣지 않거나 꼭 필요한 짧은 제목만 사용합니다.'
+        if aspect_ratio:
+            orientation, recommended = ASPECT_RATIOS[aspect_ratio]
+            presentation_block += f'\n- {aspect_ratio} {orientation} 비율, 권장 크기 {recommended}'
     reference = ''
     if reference_present:
         instruction = reference_instructions or '참고 이미지의 주요 소재, 색감, 구도, 분위기를 결과 이미지에 반영합니다.'
@@ -431,12 +469,13 @@ def series_requirements(value: dict | None) -> dict | None:
 
 def build_plan(document: dict, root: Path, *, operation: str = 'plan-only') -> dict:
     fields(document, {'schema','article'}, {'presentation','language','requested_count','article_type','format_preset',
-           'additional_requirements','reference','slots','series_requirements'}, 'request')
+           'additional_requirements','reference','slots','series_requirements','aspect_ratios'}, 'request')
     if document['schema'] != REQUEST_SCHEMA or operation not in {'plan-only','generate-and-compose','edit-existing'}:
         raise BuildError('unsupported request schema/operation', 'INVALID_CONTRACT')
     presentation = document.get('presentation', 'standard'); language = document.get('language', 'ko')
     preset = document.get('format_preset', 'auto'); count = document.get('requested_count', 'auto')
     requirements = series_requirements(document.get('series_requirements'))
+    ratios = normalize_aspect_ratios(document.get('aspect_ratios', {}))
     article_type = document.get('article_type', STYLE_TYPES[requirements['primary_style']] if requirements else 'information')
     if presentation not in PRESENTATIONS or language not in {'ko','en'} or article_type not in ARTICLE_TYPES or preset not in PRESETS:
         raise BuildError('unsupported presentation/language/type/preset', 'INVALID_CONTRACT')
@@ -506,13 +545,14 @@ def build_plan(document: dict, root: Path, *, operation: str = 'plan-only') -> d
                        'headingHint':slot.get('heading_hint', '')}
         source_entry = {**source_entry, 'role':slot['role']}
         mode = presentation_mode(presentation, source_entry)
+        aspect_ratio = ratios.get(slot['role'], '4:5' if ratios and mode == 'info-slide' else None)
         focus = context_for(draft, source_entry)
         if slot['role'] == 'cover':
             focus = draft['text']
         context = {'title':draft['title'], 'body':draft['text'], 'focus':focus}
         prompt = generation_prompt(source_entry, draft, presentation=presentation, article_type=article_type,
                     preset=preset, language=language, additional=additional, reference_present=reference is not None,
-                    reference_instructions=reference['instructions'] if reference else '')
+                    reference_instructions=reference['instructions'] if reference else '', aspect_ratio=aspect_ratio)
         if operation == 'edit-existing':
             prompt += '\n' + ('Edit the supplied original image while preserving its subject and unrequested details.' if language == 'en'
                               else '제공된 원본 이미지를 편집하고, 요청하지 않은 대상과 특징은 보존하세요.')
@@ -524,7 +564,8 @@ def build_plan(document: dict, root: Path, *, operation: str = 'plan-only') -> d
                         'purpose':slot['purpose'], 'heading_hint':slot.get('heading_hint', ''),
                         'placement':slot.get('placement', '관련 문단 뒤'), 'alt':slot.get('alt', ''),
                         'brief':slide_brief(source_entry, draft) if mode == 'info-slide' and language == 'ko' else None,
-                        'context':context, 'prompt':prompt, 'manifest_prompt':encoded(prompt)})
+                        'context':context, 'prompt':prompt, 'manifest_prompt':encoded(prompt),
+                        **({'aspect_ratio':aspect_ratio} if aspect_ratio else {})})
     blocking = any(d['code'] in {'REFERENCE_UNAVAILABLE','EDIT_TARGET_MISSING'} for d in diagnostics)
     insufficient = any(d['code'] in {'SLOT_SHORTAGE','SERIES_MINIMUM_NOT_MET','SERIES_ROLES_NOT_MET',
                                    'EXPLICIT_SLOTS_REQUIRED','COMPLETION_ROLES_NOT_MET'} for d in diagnostics)
@@ -576,12 +617,8 @@ def verify_completion(document: dict, root: Path, manifest: str, composed_articl
             try:
                 asset = inspect_asset(local_path(slot['path'], root), root)
                 report['assets'].append(asset)
-                # Native imagegen can round 4:5 to 1122x1402. Permit at most one
-                # vertical pixel AND 0.1% error; retain strict checks for other formats.
-                aspect_error = abs(asset['width']*5 - asset['height']*4)
-                if entry is not None and entry['presentation'] == 'info-slide' and (
-                        aspect_error > 4 or aspect_error*1000 > asset['height']*4):
-                    issue('SLIDE_ASPECT_MISMATCH', f"{slot['id']}: information slide must have a 4:5 ratio (pixel rounding <=1px and <=0.1%)")
+                if entry is not None:
+                    validate_asset_aspect(entry, asset)
             except (BuildError, OSError) as exc:
                 issue(getattr(exc, 'code', 'ASSET_READ_ERROR'), str(exc))
         count = len(report['assets'])

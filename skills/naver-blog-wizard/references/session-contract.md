@@ -17,6 +17,8 @@ next/status/inspect는 읽기 전용. 0=명령 처리, 1=산출물 복구 필요
 
 confirmed_options는 value/origin/user_text. origin=initial-request/answer/explicit-default. auto 장수는 명시 선택 시 5. phase/pending_question_id는 파생 캐시이며 실제 파일을 다시 확인한다.
 
+선택 `aspect_ratios`는 `{"cover":"1:1","inline":"16:9"}` 형태로 초기 옵션·change에 전달한다. 역할은 cover/inline, 비율은 4:5·1:1·16:9만 허용하며 빈 객체는 기존 기본값을 사용한다. 이미지 조건 변경 메뉴에서 비율을 고르면 이 옵션만 질문한다. 미지정 세션은 기존 질문 흐름을 유지한다. 요청 조립은 공통 이미지 도우미에 같은 매핑을 전달하며 파일 등록과 최종 합성은 동일한 실제 비율 검사 함수를 사용한다. 비율 변경은 계획·합성을 무효화하되 원고와 파일을 삭제하지 않는다. 변경된 prompt binding의 이미지는 재검수하며 영향 없는 슬롯은 유지한다.
+
 | record type | payload |
 |---|---|
 | repair | target(article/slots/plan/asset/package), asset이면 slot_id. 실제 검사 실패에서만 무효화 |
