@@ -11,6 +11,7 @@ CLI: `--input REQUEST.json --project-root ROOT (--check | --output PLAN.json) [-
   "schema": "naver-blog-image-request/v1",
   "article": {"path": "drafts/article.md"},
   "presentation": "mixed",
+  "aspect_ratios": {"cover":"1:1","inline":"16:9"},
   "language": "ko",
   "requested_count": 3,
   "article_type": "information",
@@ -25,6 +26,8 @@ CLI: `--input REQUEST.json --project-root ROOT (--check | --output PLAN.json) [-
 ```
 
 필수 필드는 schema/article이다. 다른 기본값은 standard, ko, auto, information, auto, 빈 추가 지시다. slots는 선택 사항이며 지정하면 ID·순서·role·mode를 보존하고 앞 N개를 선택한다. 슬롯의 필수 필드는 id/role/purpose/prompt/mode이며 heading_hint/placement/alt는 선택 사항이다. 승인 status나 생성 파일 path를 입력 슬롯에 넣지 않는다. 기존 마커가 있으면 같은 순서의 전체 slots를 제공해야 한다. 마커만 메모리에서 제거한 뒤 기존 원고 파서를 사용하며 원고는 수정하지 않는다.
+
+선택 필드 `aspect_ratios`는 `cover`·`inline` 역할별 비율 객체다. 허용 값은 `4:5`, `1:1`, `16:9`이며 다른 역할·비율·null·배열·숫자는 거부한다. 예를 들어 `{"cover":"1:1","inline":"16:9"}`는 대표를 정사각형, 본문을 가로형으로 지정한다. 일부 역할만 지정하면 나머지 정보 슬라이드는 기존 4:5이며 일반형은 별도 비율을 강제하지 않는다. 미지정 또는 빈 객체는 기존 계획·프롬프트를 유지한다. 자연어의 대표/표지는 cover, 본문은 inline으로 현재 에이전트가 정규화하며 원고 내부 문장에서 비율을 추론하지 않는다.
 
 **완성 모드의 장수:** `generate-and-compose`는 명시 requested_count를 정확한 완료 수량으로 사용한다. 미지정 단일 글은 총 5장, 시리즈 required는 기존 스타일 목표다. 완성 요청의 slots는 에이전트가 직접 설계한 명시 목록이어야 한다. 무슬롯·부족·잘못된 cover 구조는 insufficient/next_action=design_slots로 되돌린다. 원본 호환 source 상한을 수정하거나 일반 장면으로 자동 보충해 완료하지 않는다. plan-only의 auto 계산과 원본 비교 함수는 유지한다. 정상 완성 계획의 next_action=generate_images는 에이전트가 실제 도구를 이어서 호출해야 한다는 뜻이다.
 
@@ -50,9 +53,11 @@ reference에는 `path`와 선택적 `instructions`를 받는다. ROOT 내부의 
 
 ## 표현 유형과 기존 manifest
 
-`presentation`은 standard/info-slide/mixed다. standard는 기존 장면·매체 선택을 유지한다. info-slide는 명시적으로 선택할 때 4:5·권장 1080×1350과 본문 기반 제목/요점을 지시하며 `mode=infographic-diagram`으로 연결한다. mixed는 **대상 role=cover**만 standard, inline은 info-slide다. 원본의 빈 heading_hint 대표 판정을 대상에 그대로 쓰면 본문도 일반형으로 바뀌므로 명시 role이 우선한다. 정보 슬라이드에서도 주제별 장면·정보 구조·분위기를 선택하며 이전 글의 디자인을 기본으로 복제하지 않는다.
+`presentation`은 standard/info-slide/mixed다. standard는 기존 장면·매체 선택을 유지한다. info-slide는 본문 기반 제목/요점을 지시하며 `mode=infographic-diagram`으로 연결한다. 기본 비율은 4:5·권장 1080×1350이며 역할별 지정 시 1:1·권장 1080×1080 또는 16:9·권장 1920×1080을 사용한다. 픽셀 크기는 권장값이며 필수 해상도가 아니다. 16:9의 기본 정보 카드는 가로 공간을 활용한 열 구성을 지시한다. mixed는 **대상 role=cover**만 standard, inline은 info-slide다. 비율 지정으로 이 표현 유형을 바꾸지 않는다. 원본의 빈 heading_hint 대표 판정을 대상에 그대로 쓰면 본문도 일반형으로 바뀌므로 명시 role이 우선한다. 정보 슬라이드에서도 주제별 장면·정보 구조·분위기를 선택하며 이전 글의 디자인을 기본으로 복제하지 않는다. 역할별 비율은 대상 어댑터의 확장이며, 미지정 원본 oracle의 4:5 프롬프트는 유지한다.
 
 출력 schema는 `naver-blog-image-plan/v1`이다. status는 planned/insufficient/blocked/not_requested, count_origin은 explicit/series_target/image_completion_default/explicit_slots/source_auto, next_action은 설계/생성/편집/계획 반환의 후속 단계다. entries에는 id/role/presentation/mode/purpose/heading_hint/placement/alt/prompt/manifest_prompt/brief/context를 기록한다. reference는 검증된 로컬 입력 기록이다. article에는 source_sha256·선택적 rewrite_revision을 기록한다. 각 항목은 1장용 프롬프트다. `generation_performed=false`, `visual_ready=false`, `manifest_ready=false`, `ui_authorized=false`를 유지한다. approved·생성 결과 path는 없다.
+
+역할별 비율을 지정한 계획 항목에는 해석된 `aspect_ratio`가 추가된다. 한국어는 해당 비율·방향·권장 크기를, 영어는 `aspectRatio`와 `canvasLayout`을 생성 payload에 전달한다. manifest v1에는 새 비율 필드를 추가하지 않고 기존 `manifest_prompt`로 현재 요청·비율을 연결한다. 비율 변경 시 현재 요청으로 계획과 prompt를 재계산하고 영향받은 이미지의 실제 비율·시각 QA를 다시 확인한다.
 
 실제 생성 후 이미지 파일·문구·비율·내용 적합성·모바일 가독성을 눈으로 검수한 항목만 기존 manifest v1으로 옮긴다. mode/role은 계획에서, path/status=approved/caption은 실제 생성·검수 후 채운다. **생성 도구에는 prompt를 전달하고, manifest의 prompt에는 manifest_prompt를 저장한다.** 기존 manifest가 한 줄 문자열만 허용하므로 manifest_prompt는 전체 prompt를 JSON 문자열로 인코딩한 한 줄 보관값이다. `json.loads(manifest_prompt)`로 원래 다중 행 prompt를 손실 없이 복원할 수 있으며 기존 합성기는 이 값에 명령 실행을 하지 않는다. 계약 버전이나 필드를 바꾸지 않는다. 계획 JSON을 합성기나 series prepare에 승인 manifest로 넘기지 않는다. 장수 미달·참고 누락·stale source는 계획을 다시 확인하고 기존 v2 게이트를 그대로 통과해야 한다.
 
@@ -68,7 +73,7 @@ python3.11 -B scripts/build_blog_image_prompts.py \
   --composed-article drafts/article-with-images.md
 ```
 
-verify_completion은 새 계획을 재계산하고 기존 합성기/asset_integrity를 재사용한다. 요청 N과 실제 디코딩 이미지 수가 정확히 같아야 하고 바이트가 고유해야 한다. ID 순서·role·mode·목적·배치·alt·보관 프롬프트가 현재 계획과 같고 모든 슬롯이 approved여야 한다. info-slide는 실제 4:5 비율을 확인하며 1080×1350은 강제 해상도가 아니다. 네이티브 출력의 정수 픽셀 반올림은 세로 환산 오차 1픽셀 이하 **및** 상대 오차 0.1% 이하일 때만 허용한다(`abs(width*5-height*4)<=4` 및 `오차*1000<=height*4`). 실제 1122×1402 출력의 0.5픽셀 차이를 다른 비율로 오인하지 않되, 작은 이미지나 2:3·정사각형을 이 허용값으로 통과시키지 않는다. 합성 원고는 기존 상대/절대 이미지 링크 합성 결과 중 하나와 정확히 같아야 한다. 원고·manifest·합성 원고·이미지가 검사 중 바뀌면 거부한다.
+verify_completion은 새 계획을 재계산하고 기존 합성기/asset_integrity를 재사용한다. 요청 N과 실제 디코딩 이미지 수가 정확히 같아야 하고 바이트가 고유해야 한다. ID 순서·role·mode·목적·배치·alt·보관 프롬프트가 현재 계획과 같고 모든 슬롯이 approved여야 한다. 각 실제 파일을 역할별 지정 비율과 비교하며, 비율 미지정 info-slide는 4:5를 검사한다. 권장 픽셀 수는 강제 해상도가 아니다. 비율 a:b에서 `오차=abs(width*b-height*a)`에 대해 `오차<=a` **및** `오차*1000<=height*a`일 때만 정수 반올림을 허용한다. 이는 기존 세로 환산 오차 1픽셀 이하·상대 오차 0.1% 이하 조건과 같다. 실제 1122×1402의 4:5 반올림을 허용하되, 1:1 표지에 16:9나 4:5를 제출하면 거부한다. 실패 코드는 정보 슬라이드의 `SLIDE_ASPECT_MISMATCH`, 일반형에 명시한 비율의 `IMAGE_ASPECT_MISMATCH`다. 합성 원고는 기존 상대/절대 이미지 링크 합성 결과 중 하나와 정확히 같아야 한다. 원고·manifest·합성 원고·이미지가 검사 중 바뀌면 거부한다.
 
 출력 schema는 naver-blog-image-completion/v1이며 status=package_verified/incomplete다. 파일/해시·verified_image_count·unique_image_count·diagnostics·다음 조치를 보고한다. manifest 자체가 유효하지 않으면 아직 관찰할 수 없는 수량은 null이다. generation_verified/visual_qa_verified/ui_authorized는 false다. 파일 검사는 이미지 모델을 호출했는지, 실제 글자를 읽었는지, 장면이 적합한지를 증명하지 않는다. 에이전트는 실제 생성 결과를 눈으로 검수한 기록과 함께 최종 완료를 보고한다. helper는 원고·manifest·이미지·합성 파일을 변경하지 않는다.
 

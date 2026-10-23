@@ -116,6 +116,64 @@ class ImagePromptTests(unittest.TestCase):
         self.assertTrue(all(plan[k] is False for k in ['generation_performed','visual_ready','manifest_ready','ui_authorized']))
         self.assertTrue(all('status' not in e and 'path' not in e for e in plan['entries']))
 
+    def test_role_ratios_keep_cover_and_inline_as_information_slides(self):
+        self.data.update(presentation='info-slide', aspect_ratios={'cover':'1:1','inline':'16:9'})
+        original = self.article.read_bytes()
+        plan = self.plan()
+        self.assertEqual([e['aspect_ratio'] for e in plan['entries']], ['1:1','16:9','16:9'])
+        for entry in plan['entries']:
+            self.assertEqual(entry['presentation'], 'info-slide')
+            self.assertEqual(entry['mode'], 'infographic-diagram')
+            self.assertIn('정보 슬라이드형 카드뉴스', entry['prompt'])
+            self.assertNotIn('4:5', entry['prompt'])
+            self.assertEqual(json.loads(entry['manifest_prompt']), entry['prompt'])
+        self.assertIn('1:1 정사각형', plan['entries'][0]['prompt'])
+        self.assertIn('16:9 가로형', plan['entries'][1]['prompt'])
+        self.assertIn('2~3열 정보 카드', plan['entries'][1]['prompt'])
+        self.assertEqual(self.article.read_bytes(), original)
+
+    def test_partial_role_ratio_preserves_other_slide_default(self):
+        self.data.update(presentation='info-slide', aspect_ratios={'cover':'1:1'})
+        plan = self.plan()
+        self.assertEqual([e['aspect_ratio'] for e in plan['entries']], ['1:1','4:5','4:5'])
+        self.assertIn('4:5 세로형', plan['entries'][1]['prompt'])
+        self.data['aspect_ratios'] = {'inline':'16:9'}
+        self.assertEqual([e['aspect_ratio'] for e in self.plan()['entries']], ['4:5','16:9','16:9'])
+
+    def test_ratio_omission_and_empty_mapping_preserve_existing_plan(self):
+        original = self.plan()
+        self.data['aspect_ratios'] = {}
+        self.assertEqual(self.plan(), original)
+        self.assertTrue(all('aspect_ratio' not in e for e in original['entries']))
+
+    def test_explicit_ratios_preserve_mixed_and_standard_modes(self):
+        self.data['aspect_ratios'] = {'cover':'1:1','inline':'16:9'}
+        mixed = self.plan()['entries']
+        self.assertEqual([e['presentation'] for e in mixed], ['standard','info-slide','info-slide'])
+        self.assertIn('1:1 정사각형', mixed[0]['prompt'])
+        self.data['presentation'] = 'standard'
+        standard = self.plan()['entries']
+        self.assertTrue(all(e['presentation'] == 'standard' for e in standard))
+        self.assertIn('16:9 가로형', standard[1]['prompt'])
+
+    def test_english_ratio_is_in_generation_payload(self):
+        self.data.update(language='en', presentation='info-slide', aspect_ratios={'cover':'1:1','inline':'16:9'})
+        plan = self.plan()
+        for entry in plan['entries']:
+            payload = json.JSONDecoder().raw_decode(entry['prompt'].split('Image brief:\n', 1)[1])[0]
+            self.assertEqual(payload['aspectRatio'], entry['aspect_ratio'])
+            self.assertIn('Square' if entry['role'] == 'cover' else 'Landscape', payload['canvasLayout'])
+            self.assertNotIn('한국어 문구는', entry['prompt'])
+
+    def test_invalid_ratio_mapping_and_values_are_rejected(self):
+        for ratios in (None, [], '1:1', True, {'body':'16:9'}, {'cover':'2:3'},
+                       {'cover':None}, {'cover':1}, {'cover':True}, {'inline':[]}, {'cover':' 1:1 '}):
+            with self.subTest(ratios=ratios):
+                self.data['aspect_ratios'] = ratios
+                with self.assertRaises(prompts.BuildError) as raised:
+                    self.plan()
+                self.assertEqual(raised.exception.code, 'INVALID_CONTRACT')
+
     def test_counts_one_two_three_five_and_shortage_without_filling_explicit_slots(self):
         for count in [1,2,3,5]:
             with self.subTest(count=count):
@@ -430,9 +488,11 @@ class ImageCompletionTests(unittest.TestCase):
     plan = ImagePromptTests.plan
     cli = ImagePromptTests.cli
 
-    def package(self):
+    def package(self, aspect_ratios=None, presentation='info-slide'):
         from insert_article_images import compose_article_text
-        self.data.update(presentation='info-slide',requested_count=5)
+        self.data.update(presentation=presentation,requested_count=5)
+        if aspect_ratios is not None:
+            self.data['aspect_ratios'] = aspect_ratios
         self.data['slots'] += [self.slot('detail','inline','소재 비교'),self.slot('check','inline','휴대 순서')]
         self.data['slots'] = [self.data['slots'][i] for i in (0,1,3,2,4)]
         self.article.write_text('# 출근길 겉옷\n\n<!-- naver-image:cover -->\n\n검증용 원고이며 실제 구매나 순위를 주장하지 않습니다.\n\n## 소재 비교\n\n원단과 봉제, 마감을 구분해 확인합니다.\n\n<!-- naver-image:material -->\n\n<!-- naver-image:detail -->\n\n## 휴대 순서\n\n옷을 접고 가방에 넣는 과정을 설명합니다.\n\n<!-- naver-image:packing -->\n\n<!-- naver-image:check -->\n')
@@ -441,7 +501,8 @@ class ImageCompletionTests(unittest.TestCase):
         self.manifest=self.root/'manifest.json';self.composed=self.root/'article-with-images.md'
         self.manifest_data={'version':1,'asset_root':'assets','slots':[]}
         for i,entry in enumerate(plan['entries']):
-            Image.new('RGB',(40,50),(i*35,20,70)).save(assets/f'{entry["id"]}.png')
+            size = {'1:1':(80,80), '16:9':(160,90)}.get(entry.get('aspect_ratio'), (40,50))
+            Image.new('RGB',size,(i*35,20,70)).save(assets/f'{entry["id"]}.png')
             self.manifest_data['slots'].append({k:entry[k] for k in ('id','role','mode','purpose','placement','alt')}
                 |{'prompt':entry['manifest_prompt'],'caption':'검증용 합성 이미지','path':f'assets/{entry["id"]}.png','status':'approved'})
         self.save_manifest()
@@ -454,6 +515,63 @@ class ImageCompletionTests(unittest.TestCase):
 
     def verify(self,document=None):
         return prompts.verify_completion(document or self.data,self.root,str(self.manifest),str(self.composed))
+
+    def test_square_cover_landscape_slides_complete_five_and_cli_is_read_only(self):
+        plan = self.package({'cover':'1:1','inline':'16:9'})
+        self.assertTrue(all(e['presentation'] == 'info-slide' for e in plan['entries']))
+        before = {p:p.read_bytes() for p in self.root.rglob('*') if p.is_file()}
+        result = self.verify()
+        self.assertEqual(result['status'], 'package_verified', result['diagnostics'])
+        self.assertEqual(result['unique_image_count'], 5)
+        self.assertEqual([(a['width'], a['height']) for a in result['assets']], [(80,80)] + [(160,90)]*4)
+        self.assertTrue(all(p.read_bytes() == content for p,content in before.items()))
+        cli = self.cli('--check','--operation','generate-and-compose','--manifest',str(self.manifest),
+                       '--composed-article',str(self.composed))
+        self.assertEqual(cli.returncode, 0, cli.stderr)
+        self.assertEqual(json.loads(cli.stdout)['status'], 'package_verified')
+        self.assertTrue(all(p.read_bytes() == content for p,content in before.items()))
+
+    def test_wrong_role_ratio_and_default_portrait_cannot_complete_custom_slides(self):
+        self.package({'cover':'1:1','inline':'16:9'})
+        for name, size in [('cover',(160,90)), ('material',(80,80)), ('check',(40,50))]:
+            with self.subTest(name=name, size=size):
+                path = self.root/'assets'/f'{name}.png'
+                original = path.read_bytes()
+                Image.new('RGB', size, (210,110,40)).save(path)
+                result = self.verify()
+                self.assertEqual(result['status'], 'incomplete')
+                self.assertIn('SLIDE_ASPECT_MISMATCH', [d['code'] for d in result['diagnostics']])
+                path.write_bytes(original)
+
+    def test_ratio_change_cannot_reuse_old_prompt_approval(self):
+        self.package({'cover':'1:1','inline':'16:9'})
+        self.data['aspect_ratios']['cover'] = '16:9'
+        Image.new('RGB',(160,90),(220,100,60)).save(self.root/'assets/cover.png')
+        result = self.verify()
+        self.assertEqual(result['status'], 'incomplete')
+        self.assertIn('PROMPT_PLAN_MISMATCH', [d['code'] for d in result['diagnostics']])
+
+    def test_ratio_rounding_boundaries_for_square_landscape_and_portrait(self):
+        for ratio, good, bad in [
+            ('1:1', [(1024,1024),(1024,1025)], [(1024,1026),(5,6)]),
+            ('16:9', [(1536,864),(1920,1081)], [(1920,1082),(160,91),(1536,865)]),
+            ('4:5', [(1122,1402),(1122,1403)], [(1122,1404),(40,40)]),
+        ]:
+            entry = {'id':'check','presentation':'info-slide','aspect_ratio':ratio}
+            for width, height in good:
+                with self.subTest(ratio=ratio, size=(width,height), accepted=True):
+                    prompts.validate_asset_aspect(entry, {'width':width,'height':height})
+            for width, height in bad:
+                with self.subTest(ratio=ratio, size=(width,height), accepted=False):
+                    with self.assertRaises(prompts.BuildError):
+                        prompts.validate_asset_aspect(entry, {'width':width,'height':height})
+
+    def test_mixed_and_standard_explicit_ratio_checks_cover_as_well(self):
+        self.package({'cover':'1:1','inline':'16:9'}, presentation='mixed')
+        self.assertEqual(self.verify()['status'], 'package_verified')
+        Image.new('RGB',(40,50),(210,110,40)).save(self.root/'assets/cover.png')
+        result = self.verify()
+        self.assertIn('IMAGE_ASPECT_MISMATCH', [d['code'] for d in result['diagnostics']])
 
     def test_exact_five_with_two_headings_and_source_oracle_boundary(self):
         plan=self.package()

@@ -15,6 +15,8 @@ description: "네이버 단일 글 작성과 이미지 옵션을 한 번에 하�
 4. `next --session FILE`의 question 하나만 표시하고 답을 기다린다. 선택지는 보통 동작이 다른 3~5개와 자유 입력을 허용하며 이진 질문은 두 선택으로 충분하다. 미응답·default 표시는 답이 아니다.
 5. canonical value를 `answer`에 question_id/expected_revision과 전달한다. 앞선 선택은 change, 중단/재개는 pause/resume을 사용한다. [세션 계약](references/session-contract.md)에 명령과 payload가 있다.
 
+대표·본문 비율을 명시하면 선택 옵션 `aspect_ratios`에 `{"cover":"1:1","inline":"16:9"}`처럼 저장한다. 정보 슬라이드는 표지까지 같은 유형을 유지한다. 비율 미지정은 기존 4:5이며 필수 질문을 추가하지 않는다. 이미지 조건 변경 메뉴의 비율 선택이나 `change --key aspect_ratios`로 변경할 수 있다.
+
 ## action 처리
 
 - write_article/rewrite_article: [단일 글 지침](references/single-post-writing.md)으로 별도 Markdown을 작성한다. 원문을 보존하고 메모를 분리해 article 기록을 등록한다. 새 원고는 사용 선택을 기다린다.

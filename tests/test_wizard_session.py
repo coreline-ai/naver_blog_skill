@@ -33,6 +33,24 @@ class WizardSessionTests(unittest.TestCase):
         self.assertEqual(w.next_step(s)['key'],'audience')
         s=self.answer(s,'general'); self.assertEqual(w.next_step(s)['key'],'article_type')
         s=self.answer(s,'information'); self.assertEqual(w.next_step(s)['key'],'length')
+
+    def test_optional_aspect_ratios_validate_initial_change_and_pause_resume(self):
+        ratios={'cover':'1:1','inline':'16:9'}
+        s=self.new(task_mode='images-only',source_article='article.md',aspect_ratios=ratios)
+        self.assertEqual(w.value(s,'aspect_ratios'),ratios)
+        self.assertEqual(w.next_step(s)['action'],'use_source_article')
+        paused=w.apply_control(s,'pause',s['revision'])
+        resumed=w.apply_control(paused,'resume',paused['revision'])
+        self.assertEqual(w.value(resumed,'aspect_ratios'),ratios)
+        changed=w.apply_change(resumed,'aspect_ratios',{'cover':'4:5'},resumed['revision'])
+        self.assertEqual(w.value(changed,'aspect_ratios'),{'cover':'4:5'})
+        for invalid in (None,[],True,{'body':'16:9'},{'inline':'2:3'},{'cover':False}):
+            with self.subTest(invalid=invalid):
+                with self.assertRaises(w.WizardError) as exc:
+                    self.new(aspect_ratios=invalid)
+                self.assertEqual(exc.exception.code,'INVALID_ANSWER')
+                with self.assertRaises(w.WizardError):
+                    w.apply_change(s,'aspect_ratios',invalid,s['revision'])
     def test_Q03_modes_skip_irrelevant_questions(self):
         self.assertEqual(w.next_step(self.new(task_mode='images-only',source_article='article.md'))['action'],'use_source_article')
         self.assertEqual(w.next_step(self.new(task_mode='edit-existing'))['key'],'edit_target')
