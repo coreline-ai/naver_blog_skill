@@ -1,0 +1,6 @@
+interface:
+  display_name: "머니대외비 홈피드 편집"
+  short_description: "실시간 소재부터 네이버 제목·원고·이미지·성과 진단까지"
+  default_prompt: "$moneydaeoebi-homepan 오늘 화제어를 확인하고 R9의 10그룹·50개 제목 매트릭스와 TOP5·최종 추천을 만들어줘."
+policy:
+  allow_implicit_invocation: true
