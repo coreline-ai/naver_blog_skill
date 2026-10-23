@@ -35,7 +35,7 @@
 **문체는 고정하고, 주제만 바꿉니다.**  
 말투·리듬·근거 사용법·문단 구조를 프로필로 분리하고, 명시적으로 요청한 경우에만 실사·창작·인포그래픽을 생성해 원고에 배치합니다.
 
-[기능별 사용 가이드](./docs/skill-capabilities.md) · [월별 주제 추천](#naver-seasonal-blog-writer) · [현재 상태](#skill-current-status) · [빠른 시작](#-빠른-시작) · [핵심 기능](#-핵심-기능) · [작동 방식](#-작동-방식) · [이미지 구성](#-visual-composer) · [문답형 작성](#naver-blog-wizard) · [키워드 추천](#naver-creator-keyword-recommender) · [제목 최적화](#-제목-최적화-스킬) · [시리즈 작성](#seo-series-writer) · [SmartEditor 초안](#naver-smarteditor-drafter) · [전체 워크플로](#naver-series-workflow) · [대표 프롬프트](#skill-representative-prompts) · [파일 구조](#-파일-구조) · [사용 예시](#-사용-예시)
+[기능별 사용 가이드](./docs/skill-capabilities.md) · [월별 주제 추천](#naver-seasonal-blog-writer) · [현재 상태](#skill-current-status) · [빠른 시작](#-빠른-시작) · [핵심 기능](#-핵심-기능) · [작동 방식](#-작동-방식) · [이미지 구성](#-visual-composer) · [문답형 작성](#naver-blog-wizard) · [키워드 추천](#naver-creator-keyword-recommender) · [제목 최적화](#-제목-최적화-스킬) · [홈피드 편집](#moneydaeoebi-homepan) · [시리즈 작성](#seo-series-writer) · [SmartEditor 초안](#naver-smarteditor-drafter) · [전체 워크플로](#naver-series-workflow) · [대표 프롬프트](#skill-representative-prompts) · [파일 구조](#-파일-구조) · [사용 예시](#-사용-예시)
 
 </div>
 
@@ -115,6 +115,7 @@ $naver-seasonal-blog-writer 추천한 2번으로 글을 작성하고 출처·검
 | 🧾 **Manifest 기반 삽입** | 승인된 로컬 이미지만 명시적 슬롯에 비파괴적으로 삽입합니다. |
 | 👁️ **시각 QA** | 문맥, 사실성, 손·얼굴, 글자, 브랜드, 스타일, 모바일 크롭을 확인합니다. |
 | 📈 **최근 유입 키워드 추천** | 크리에이터 어드바이저의 완료된 최근 7일을 직전 7일과 비교해 주제를 정하고, 요청 시 블로그 홈 제목 구조를 보완해 대표 제목을 안전하게 추천합니다. |
+| 🗞️ **실시간 홈피드 편집** | 실시간 화제어·기사·소재 카드에서 순위 관측과 사건 사실을 분리해 제목·원고·이미지 브리프·성과 진단을 만듭니다. |
 | 📅 **월별 주제 자동 추천·작성** | 해당 월의 글감을 중복 검토해 추천하고, 선택한 주제로 공식 자료 확인·원고·검수·블로그별 이력 저장까지 독립 수행합니다. |
 | 📚 **SEO 시리즈 작성** | 니치·목차·회차별 문제 해결형 원고를 만들고 사실성과 회차 중복을 검수합니다. |
 | 🧱 **네이버 정본 준비** | Markdown·구조형 JSON을 `naver-post/v1`으로 변환하고 이미지·태그·서식을 검사합니다. |
@@ -125,13 +126,14 @@ $naver-seasonal-blog-writer 추천한 2번으로 글을 작성하고 출처·검
 
 ## 현재 스킬 구성과 검증 상태
 
-**2026-10-19 현재 작업 트리 기준으로 기본 스킬 1개와 전용 스킬 7개, 총 8개가 구현돼 있습니다.** 기능별 기본값, 복사해서 쓰는 예제, 적용 범위는 [기능별 사용 가이드](./docs/skill-capabilities.md)에서 확인할 수 있습니다. 이 환경의 월별 시즌 작성 스킬은 전역 설치까지 확인했으며, 다른 환경의 설치와 GitHub 배포는 별도 작업입니다.
+**2026-10-23 현재 작업 트리 기준으로 기본 스킬 1개와 전용 스킬 8개, 총 9개가 구현돼 있습니다.** 기능별 기본값, 복사해서 쓰는 예제, 적용 범위는 [기능별 사용 가이드](./docs/skill-capabilities.md)에서 확인할 수 있습니다. 이 환경의 월별 시즌 작성 스킬은 전역 설치까지 확인했으며, 다른 환경의 설치와 GitHub 배포는 별도 작업입니다.
 
 | 스킬 | 담당 범위 |
 |---|---|
 | [naver-blog-style](./SKILL.md) | 단일 글 작성·재작성, 문체 프로필, 기존 본문 참고, 제목 선정, 요청한 이미지 완성 |
 | [naver-blog-wizard](./skills/naver-blog-wizard/SKILL.md) | 단일 글·이미지 옵션 문답, 파일 사용·편집, 선택 변경·중단·재개 |
 | [naver-title](./skills/naver-title/SKILL.md) | 검색형·홈판형·혼합형 제목 생성과 검수 |
+| [moneydaeoebi-homepan](./skills/moneydaeoebi-homepan/SKILL.md) | 실시간 화제어·기사·소재 카드의 사실 검증, 홈피드 제목·원고·이미지 브리프·성과 진단 |
 | [naver-creator-keyword-recommender](./skills/naver-creator-keyword-recommender/SKILL.md) | 실제 최근 유입 기반 주제·대표 제목 추천, 요청한 홈 제목 패턴 분석 |
 | [naver-seasonal-blog-writer](./skills/naver-seasonal-blog-writer/SKILL.md) | 이번 달·지정 월 주제 자동 추천, 선택한 글 작성·갱신·검수·블로그별 이력 관리 |
 | [seo-series-writer](./skills/seo-series-writer/SKILL.md) | 연재 목차·회차별 원고 작성·재작성 |
@@ -532,7 +534,17 @@ $naver-title
 확인되지 않은 가격·기간·경험은 만들지 마.
 ```
 
-#### 4. `seo-series-writer` — 정보성 시리즈 기획과 제1편 작성
+#### 4. `moneydaeoebi-homepan` — 실시간 화제어를 홈피드 콘텐츠로 편집
+
+```text
+$moneydaeoebi-homepan
+
+현재 화제어를 확인하고 R9 10그룹·50개 제목 매트릭스와 TOP5·최종 추천을 만들어줘.
+화제어 집계 출처와 확인 시각을 밝히고,
+검색어 관측과 사건 사실을 서로 다른 근거로 검증해줘.
+```
+
+#### 5. `seo-series-writer` — 정보성 시리즈 기획과 제1편 작성
 
 ```text
 $seo-series-writer
@@ -552,7 +564,7 @@ $seo-series-writer
 - 이미지 생성과 게시 작업은 하지 않기
 ```
 
-#### 5. `naver-smarteditor-drafter` — 완성 원고 검증과 순차 임시저장
+#### 6. `naver-smarteditor-drafter` — 완성 원고 검증과 순차 임시저장
 
 ```text
 $naver-smarteditor-drafter
@@ -567,7 +579,7 @@ $naver-smarteditor-drafter
 - 공개·예약 발행은 하지 않기
 ```
 
-#### 6. `naver-series-workflow` — 시리즈 전체를 안전하게 준비
+#### 7. `naver-series-workflow` — 시리즈 전체를 안전하게 준비
 
 ```text
 $naver-series-workflow
@@ -585,7 +597,7 @@ $naver-series-workflow
 - 이번 요청에서는 SmartEditor 입력과 발행을 하지 않기
 ```
 
-#### 7. `naver-blog-wizard` — 한 질문씩 글·이미지 옵션 선택
+#### 8. `naver-blog-wizard` — 한 질문씩 글·이미지 옵션 선택
 
 ```text
 $naver-blog-wizard
@@ -597,7 +609,7 @@ $naver-blog-wizard
 
 문답 중에는 `이미지 유형만 카드뉴스형으로 바꿔줘`, `잠시 중단해줘`, `이전 세션을 이어서 진행해줘`처럼 범위를 지정할 수 있습니다. 문체 인터뷰·시리즈 작성·SmartEditor 입력은 각각 별도 스킬의 범위입니다.
 
-#### 8. `naver-seasonal-blog-writer` — 월별 주제 추천 후 선택한 글 작성
+#### 9. `naver-seasonal-blog-writer` — 월별 주제 추천 후 선택한 글 작성
 
 ```text
 $naver-seasonal-blog-writer
@@ -613,7 +625,7 @@ $naver-seasonal-blog-writer
 
 월만 지정한 추천과 실제 글쓰기를 나누어 요청할 수 있습니다. “3월 주제 추천”, “다음 달 생활정보 5개”, “12월 월간 계획”도 지원합니다. 독립 실행 조건·날짜 해석·저장 파일은 [전용 가이드](./docs/naver-seasonal-blog-writer-guide.md)를 참고하세요.
 
-#### 9. 전체 워크플로 — 최근 키워드 선정부터 글 3편 임시저장까지
+#### 10. 전체 워크플로 — 최근 키워드 선정부터 글 3편 임시저장까지
 
 아래 프롬프트는 `naver-creator-keyword-recommender` → `naver-title` → `naver-blog-style` 또는 `seo-series-writer` → `naver-series-workflow` → `naver-smarteditor-drafter`를 하나의 안전한 작업으로 연결하는 대표 예시입니다.
 
@@ -858,6 +870,22 @@ $naver-creator-keyword-recommender
 
 이 스킬은 검색 상위 노출, 홈판 선정 또는 조회수 상승을 보장하지 않습니다. 제목 목적에 맞는 후보와 검수 근거를 제공합니다.
 
+<a id="moneydaeoebi-homepan"></a>
+
+## 🗞️ 실시간 홈피드 편집 스킬
+
+[`skills/moneydaeoebi-homepan`](./skills/moneydaeoebi-homepan/)은 실시간 화제어·기사 URL·키워드·소재 카드를 **사실 확인 → 검색형/홈피드형/혼합형 판정 → 제목 → 구성·원고 → 이미지 브리프 → 성과 회고**로 연결합니다. 순위 서비스의 관측과 사건의 실제 사실을 분리하며, 비공식 트렌드 집계를 네이버 공식 실시간 검색어로 표현하지 않습니다.
+
+모든 제목 생성 요청은 R9 10그룹 × 5개, 총 50개를 출력합니다. 각 그룹은 따옴표 스타터 2개와 무따옴표 스타터 3개로 구성해 전체 20개·30개를 맞추며, 감정 증폭형을 포함한 10개 그룹과 30종 스타터를 모든 주제에 적용합니다. `~라고?`, `~는데?`, `왜 ~지?`, 말줄임표, 감정어 상한과 라벨 정합성을 검사하고, 내부 매니페스트로 주제별 30종 원형·서로 다른 그룹의 TOP5·최종 추천 문장 일치를 확인합니다. 민감 소재는 10번 그룹의 자리와 개수를 유지하면서 추모·의미·공식 대응형으로 안전하게 대체합니다. 원본 자료의 `5%/20% 성과 구간`과 `하루 3편`은 공식 규칙이 아닌 레거시 실험으로 격리했습니다.
+
+```text
+$moneydaeoebi-homepan 오늘 화제어를 확인해 R9 10그룹·50개 제목 매트릭스와 TOP5·최종 추천을 만들어줘.
+$moneydaeoebi-homepan 이 기사 URL로 사실을 확인하고 제목부터 완성 원고까지 작성해줘.
+$moneydaeoebi-homepan 이 원고를 팩트체크하고 수정 필요·확인 불가·통과로 나눠줘.
+```
+
+실제 발행은 수행하지 않습니다. 이미지 생성도 사용자가 요청했을 때만 실행하며, 실존 인물의 AI 재현·실제 사건처럼 보이는 합성을 금지합니다.
+
 <a id="seo-series-writer"></a>
 
 ## 📚 SEO 정보성 시리즈 작성 스킬
@@ -869,6 +897,7 @@ $naver-creator-keyword-recommender
 | `naver-blog-style` | 개인 문체 인터뷰·적용, 명시적 요청 시 이미지 구성 |
 | `naver-creator-keyword-recommender` | 최근 유입 데이터 비교·주제 후보·키워드별 대표 제목 추천 |
 | `naver-title` | 네이버 검색형·홈판형·혼합형 제목 |
+| `moneydaeoebi-homepan` | 실시간 화제어·기사의 검증과 홈피드 제목·원고·이미지·성과 진단 |
 | `seo-series-writer` | 정보성 시리즈 기획·본문·이어쓰기·검수 |
 | `naver-smarteditor-drafter` | 완성 원고 검증·SmartEditor 순차 입력·임시저장 |
 | `naver-series-workflow` | 시리즈 원고·이미지 준비부터 SmartEditor 순차 임시저장·재개까지 연결 |
@@ -1219,6 +1248,28 @@ python3.11 skills/naver-series-workflow/scripts/prepare_series.py status \
 │   │       ├── 📐 title-framework.md
 │   │       ├── ✅ evaluation-rubric.md
 │   │       └── 📚 examples.md
+│   ├── 📁 moneydaeoebi-homepan
+│   │   ├── 🧠 SKILL.md
+│   │   ├── 📁 agents
+│   │   │   └── ⚙️ openai.yaml
+│   │   ├── 📁 scripts
+│   │   │   ├── ✅ audit_title_set.py
+│   │   │   ├── ✅ validate_skill_refs.py
+│   │   │   └── ✅ validate_draft_structure.py
+│   │   ├── 📁 tests
+│   │   │   └── ✅ test_audit_title_set.py
+│   │   └── 📁 references
+│   │       ├── 🔄 workflow.md
+│   │       ├── 🏷️ title-system.md
+│   │       ├── 🧪 title-lab.md
+│   │       ├── 🧩 title-pattern-matrix.md
+│   │       ├── 🧾 r9-audit-manifest.md
+│   │       ├── 🧭 case-routes.md
+│   │       ├── 📝 body-style.md
+│   │       ├── 🛡️ fact-safety.md
+│   │       ├── 🖼️ image-policy.md
+│   │       ├── 📚 category-rules.md
+│   │       └── 📈 performance-experiments.md
 │   ├── 📁 seo-series-writer
 │   │   ├── 🧠 SKILL.md
 │   │   ├── 📁 agents
@@ -1288,6 +1339,7 @@ python3.11 skills/naver-series-workflow/scripts/prepare_series.py status \
 | [`skills/naver-creator-keyword-recommender/scripts/analyze_home_titles.py`](./skills/naver-creator-keyword-recommender/scripts/analyze_home_titles.py) | 블로그 홈 제목 스냅샷을 검증하고 원문 없는 구조·길이·민감도 집계를 생성하는 결정적 CLI |
 | [`skills/naver-seasonal-blog-writer/`](./skills/naver-seasonal-blog-writer/) | 폴더 하나에 데이터·추천·작성 지침·검수·이력을 포함한 독립 월별 시즌 스킬 |
 | [`skills/naver-title/`](./skills/naver-title/) | 검색형·홈판형·혼합형 제목을 생성하고 사실성·키워드 남용·클릭베이트를 검수하는 독립 스킬 |
+| [`skills/moneydaeoebi-homepan/`](./skills/moneydaeoebi-homepan/) | 실시간 화제어·기사·소재 카드의 사실 검증과 홈피드 제목·원고·이미지 브리프·성과 진단을 연결하는 독립 스킬 |
 | [`skills/seo-series-writer/`](./skills/seo-series-writer/) | 니치 선정·시리즈 목차·3,000자 완성형 원고·6개 작성 프로필·사실성 검수의 독립 스킬 |
 | [`skills/naver-smarteditor-drafter/`](./skills/naver-smarteditor-drafter/) | 완성 원고를 검증하고 SmartEditor에 순차 입력·임시저장하는 독립 스킬 |
 | [`skills/naver-smarteditor-drafter/scripts/build_naver_post.py`](./skills/naver-smarteditor-drafter/scripts/build_naver_post.py) | Markdown·구조형 JSON을 `naver-post/v1`과 사전검증 보고서로 변환하는 CLI |

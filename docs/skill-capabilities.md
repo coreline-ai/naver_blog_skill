@@ -1,6 +1,6 @@
 # 현재 스킬 기능과 사용 예제
 
-기준일: **2026-10-19**. 현재 저장소의 작업 트리와 각 `SKILL.md`를 기준으로 정리했다. 구현된 기능, 이전 검증 기록, 아직 확인하지 않은 실행 환경을 구분한다. 사용자 명시 조건이 기본값보다 우선하며, 세부 계약은 연결된 스킬·reference를 따른다.
+기준일: **2026-10-23**. 현재 저장소의 작업 트리와 각 `SKILL.md`를 기준으로 정리했다. 구현된 기능, 이전 검증 기록, 아직 확인하지 않은 실행 환경을 구분한다. 사용자 명시 조건이 기본값보다 우선하며, 세부 계약은 연결된 스킬·reference를 따른다.
 
 ## 1. 어떤 스킬을 사용할까?
 
@@ -9,6 +9,7 @@
 | 주제로 글을 쓰거나 기존 글을 수정 | [naver-blog-style](../SKILL.md) | 저장된 문체를 적용한 단일 원고, 요청 시 이미지 포함 원고 |
 | 옵션을 한 질문씩 선택하며 작성 | [naver-blog-wizard](../skills/naver-blog-wizard/SKILL.md) | 확정 원고·이미지 계획·요청한 이미지 패키지와 재개 가능한 세션 |
 | 제목만 생성·개선 | [naver-title](../skills/naver-title/SKILL.md) | 검색형·홈판형·혼합형 후보와 추천 |
+| 실시간 화제어·기사로 홈피드 콘텐츠 기획 | [moneydaeoebi-homepan](../skills/moneydaeoebi-homepan/SKILL.md) | 검증된 주제·제목·원고·이미지 브리프·성과 진단 |
 | 실제 유입을 보고 다음 주제 선정 | [naver-creator-keyword-recommender](../skills/naver-creator-keyword-recommender/SKILL.md) | 추천 키워드·대표 제목·집계 패턴·수집 상태 |
 | 월별 시즌 글감으로 기획·작성·갱신 | [naver-seasonal-blog-writer](../skills/naver-seasonal-blog-writer/SKILL.md) | 월별 추천·실제 원고·검수·버전·블로그별 로컬 이력 |
 | 연재를 기획하고 한 편씩 작성 | [seo-series-writer](../skills/seo-series-writer/SKILL.md) | 전체 목차와 요청한 회차 원고 |
@@ -34,6 +35,9 @@
 | 통합 작성 제목 | 검색형·홈판형·혼합형 각 3개 내부 비교 → 혼합형 최종 1개 | 기본 글쓰기 흐름. 고정 제목·명시 유형·개수 우선 |
 | 일반 제목 전용 요청 | 검색형 5개·홈판형 5개·혼합형 3개 | 유형·개수가 없는 일반 `naver-title` 요청 |
 | 제목 단축 요청 | 검색형 4개·홈판형 3개·혼합형 3개 + 최종 추천 | `네이버 제목/타이틀/주제 …` |
+| 홈피드 편집 제목 | R9 10그룹 × 5개 = 50개, TOP5, 최종 추천 1개 | `moneydaeoebi-homepan`의 모든 제목 생성 요청 |
+| 홈피드 편집 여러 주제 제목 | 요청 전체 50개 안에 모든 주제 포함 | 각 주제에 30종 스타터를 내부 적용한 뒤 그룹별 후보 배치 |
+| R9 제목 형식 | 그룹마다 따옴표 2개·무따옴표 3개, 전체 20개·30개 | 감정어 상한·민감 대체·기계적 어미·말줄임표 제한 포함 |
 | 이미지 없는 글 | 이미지 생성 생략 | 글 작성만 요청 |
 | 이미지 포함 단일 글 | 표지 포함 총 5장 | 이미지 포함을 요청하고 장수는 생략한 경우. 명시 N은 정확히 N장 |
 | 문답형 이미지 자동 장수 | 추천 5장을 질문에서 확인 후 적용 | 문답형의 미응답·기본 선택은 확정 답변이 아님 |
@@ -205,7 +209,21 @@ $naver-creator-keyword-recommender
 
 홈 분석의 제목 표본은 검색 키워드로 바꾸지 않는다. 이 기능의 홈 제목 패턴 분석과 단일 글 작성의 기존 게시물 본문 참고는 서로 다른 수집이다. 실제 관찰 범위·부분 수집을 보고하며 검색량·조회수·CTR을 추측하지 않는다.
 
-## 9. 연재 기획·원고 작성
+## 9. 실시간 화제어·기사 홈피드 편집
+
+[moneydaeoebi-homepan](../skills/moneydaeoebi-homepan/SKILL.md)은 실시간 화제어, 기사 URL, 키워드, 소재 카드를 사실 검증부터 제목·원고·이미지 브리프·성과 진단까지 연결한다. 트렌드 순위 관측은 사건 사실의 근거로 쓰지 않고, 비공식 집계면 서비스명·확인 시각·비공식이라는 점을 밝힌다.
+
+```text
+$moneydaeoebi-homepan
+현재 화제어를 확인하고 R9 10그룹·50개 제목 매트릭스와 TOP5·최종 추천을 만들어줘.
+검색어 집계와 사건 사실의 출처를 분리해 검증해줘.
+```
+
+모든 제목 생성 요청은 R9 10그룹 × 5개, 총 50개를 출력한다. 그룹마다 따옴표 2개·무따옴표 3개로 구성해 전체 20개·30개를 맞추고, 감정 증폭형을 포함한 10그룹과 30종 스타터를 모두 적용한다. `~라고?`, `~는데?`, `왜 ~지?`, 말줄임표, 감정어 상한과 스타터 라벨을 검사하고, 매니페스트로 주제별 S01~S30 원형·서로 다른 그룹의 TOP5·최종 추천 문장 일치를 확인한다. 민감 소재는 10번 그룹을 추모·의미·공식 대응형으로 대체한다. 원본 R9의 `5%/20% 성과 구간`, `하루 3편`, 유입 경로 합산은 공식 규칙이 아니며 레거시 실험으로 분리했다. `네이버 메인_모바일_홈판`과 `네이버 블로그_모바일`은 기본적으로 따로 기록한다.
+
+원고는 제목의 숨긴 답을 도입 끝에서 첫 소제목 사이에 제공한다. 이미지 생성은 명시 요청에서만 실행하고, 실존 인물 AI 재현과 실제 사건처럼 보이는 합성을 하지 않는다. 실제 게시·예약 발행은 이 스킬 범위가 아니다.
+
+## 10. 연재 기획·원고 작성
 
 [seo-series-writer](../skills/seo-series-writer/SKILL.md)는 니치·전체 목차·제1편부터 시작해 요청 범위대로 이어 쓴다. 전문가형·스토리형·후기형·친숙한 설명형·문제 해결형·비교 선택형 프로필을 지원하고, 미지정은 `expert + friendly`다.
 
@@ -218,7 +236,7 @@ $seo-series-writer
 
 같은 대화에서 `다음 편`, `제3편 재작성`, `발행 패키지`, `상태 요약`을 요청할 수 있다. 파일 출력 요청 시 공개 본문 `article.md`, 편집 메모 `editorial.json`, 검토 대기 `review.json`을 분리한다. 단독 연재 작성은 개인 문체 자동 적용·이미지 생성·네이버 입력을 기본으로 수행하지 않는다.
 
-## 10. 시리즈 원고·이미지 통합 준비
+## 11. 시리즈 원고·이미지 통합 준비
 
 [naver-series-workflow](../skills/naver-series-workflow/SKILL.md)는 작성 → 내용 검수 → 이미지 계획·생성·검수 → 네이버 정본 준비를 연결한다. 이미지 장수를 지정하면 회차별 수량을 검사하고, 이미지 필수 v2의 최소 3장과 충돌하는 요구는 계약 불일치로 보고한다.
 
@@ -236,7 +254,7 @@ prepare 모드로 검수된 원고와 이미지 패키지를 준비해줘.
 각 편을 임시저장한 뒤 재열어 확인해줘.
 ```
 
-## 11. 완성 원고의 SmartEditor 입력·임시저장
+## 12. 완성 원고의 SmartEditor 입력·임시저장
 
 [naver-smarteditor-drafter](../skills/naver-smarteditor-drafter/SKILL.md)는 완성 Markdown 또는 구조형 JSON을 `naver-post/v1`으로 검증한다. 실제 이미지 파일·해시·서식·태그를 확인하며 원고나 이미지를 새로 창작하는 역할은 아니다.
 
@@ -260,7 +278,7 @@ $naver-smarteditor-drafter
 
 실행에는 로그인된 브라우저와 대상 블로그, 로컬 파일 업로드·관찰 기능이 필요하다. 한 편씩 빈 화면 → 입력 → 전체 대조 → 저장 응답 → 재열기 대조 → 새 빈 화면을 확인한다. 저장 여부가 불명확하면 다음 편을 진행하지 않는다. 공개·예약 발행은 수행하지 않는다.
 
-## 12. 로컬 도우미와 현재 검증 상태
+## 13. 로컬 도우미와 현재 검증 상태
 
 도우미는 계약·파일·길이·순서·해시 등을 계산한다. 브라우저 관찰, 의미 분석, 이미지 도구 호출, 실제 시각 검수는 현재 에이전트가 수행한다.
 
@@ -273,6 +291,8 @@ $naver-smarteditor-drafter
 | [prepare_series.py](../skills/naver-series-workflow/scripts/prepare_series.py) | 시리즈 검수 상태와 불변 준비 run 생성 |
 | [build_naver_post.py](../skills/naver-smarteditor-drafter/scripts/build_naver_post.py) | 네이버 정본 변환·사전검증 |
 | [catalog.py](../skills/naver-seasonal-blog-writer/scripts/catalog.py) · [article.py](../skills/naver-seasonal-blog-writer/scripts/article.py) · [history.py](../skills/naver-seasonal-blog-writer/scripts/history.py) | 월별 후보 조회·작성 패킷/버전/검수 연결·블로그별 로컬 이력 |
+| [validate_skill_refs.py](../skills/moneydaeoebi-homepan/scripts/validate_skill_refs.py) · [validate_draft_structure.py](../skills/moneydaeoebi-homepan/scripts/validate_draft_structure.py) | 홈피드 스킬 내부 링크와 게시 원고의 제목·소제목·해시태그·미완성 자리표시자 검사 |
+| [audit_title_set.py](../skills/moneydaeoebi-homepan/scripts/audit_title_set.py) | R9 50개·20/30·그룹별 2/3·라벨 정합성·N6/N7·감정어·민감 대체·S01~S30·TOP5/최종 일치를 필수 검사 |
 
 공통 이미지·문답·SmartEditor 관련 Python 도우미는 Python 3.11+를 사용하고, 이미지 검사에는 Pillow가 필요하다. SmartEditor 관찰 검사에는 Node, 스킬 메타데이터 검사 도구에는 PyYAML을 사용한다. 월별 시즌 스킬은 Python 3.10+ 표준 라이브러리로 실행하며 Pillow·Node·PyYAML을 런타임 의존성으로 요구하지 않는다. 문답형의 상태 잠금은 macOS/Linux 기준이다.
 
@@ -300,7 +320,7 @@ $naver-smarteditor-drafter
 이전 문서 검증 기록(2026-10-12): 스킬 7개의 `quick_validate` 통과, 로컬 링크 117개(앵커 포함 링크 20개) 확인, 보호 파일 114개의 SHA-256 동일, `git diff --check` 통과. 당시 기록을 현재 문서 검사 수치로 바꾸지 않는다.
 
 
-## 13. 월별 시즌 추천·작성·갱신·이력
+## 14. 월별 시즌 추천·작성·갱신·이력
 
 [naver-seasonal-blog-writer](../skills/naver-seasonal-blog-writer/SKILL.md)는 월별 원문 데이터와 블로그별 로컬 작성 이력으로 글감을 고른다. 실제 유입·검색량·경쟁도는 수집하지 않는다. 정제 문구 2,793개, 보수적인 주제 그룹 2,728개를 포함하며 검토 대기 문구 847개를 자동 추천에서 제외한다. 글 작성 전 의미 중복과 실제 해당 연도·회차를 확인한다.
 
