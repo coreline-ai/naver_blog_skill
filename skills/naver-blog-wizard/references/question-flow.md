@@ -8,11 +8,11 @@
 | topic | 자유 텍스트 | new만 → 작성 옵션 |
 | source_article | 실제 원고 경로 | rewrite/images-only → 원고 작업 |
 | audience | beginner/general/experienced 또는 자유 입력 | new/rewrite → article_type |
-| article_type | information/howto/comparison/review, 자유 입력 place/story/checklist/auto | new/rewrite → tone |
+| article_type | auto/information/comparison/howto/expert, 자유 입력 review/place/story/checklist/troubleshooting | new/rewrite → tone. auto는 제목에 맞춰 자동 선택 |
 | tone | plain/friendly/professional/profile 또는 자유 입력 | profile 파일 변경 없음 → length |
 | length | short/medium/long 또는 양의 글자 수 | 사용자 분량 우선 → format_preset |
 | format_preset | auto/clean/magazine/review, 자유 입력 comparison/checklist/emotional | 기존 enum → 경험 근거 |
-| experience_basis | 실제 근거 또는 source-based | review/place만. source-based는 information 전환 |
+| experience_basis | 실제 근거 텍스트, source-based 또는 `{type,evidence}` | review/place/story 또는 auto의 체험 제목. source-based는 information 전환하되 최종 제목의 허구 체험 약속은 별도 차단. 가정 사례는 illustrative로 구분 |
 | article_review | use/revise/change | 새 원고만. images-only는 사용으로 처리 |
 | article_change | 작성 옵션 key | change 후 해당 질문만 다시 |
 | image_action | none/prompt-only/generate/use-files | images-only는 none 제외 |

@@ -19,6 +19,8 @@ description: "네이버 단일 글 작성과 이미지 옵션을 한 번에 하�
 
 ## action 처리
 
+새 글/재작성의 auto는 [제목 중심 자동 구조](../../references/title-driven-writing-style.md)를 적용한다. write action의 후보는 의미 검수 전이다. 최종 H1에 대한 intent/reason을 helper에 전달한 결과를 article 기록의 `style_selection`으로 넘긴다. 사용자 유형과 개인 문체는 유지하며 이미지 전용·기존 세션은 강제 재분류하지 않는다.
+
 - write_article/rewrite_article: [단일 글 지침](references/single-post-writing.md)으로 별도 Markdown을 작성한다. 원문을 보존하고 메모를 분리해 article 기록을 등록한다. 새 원고는 사용 선택을 기다린다.
 - use_source_article: 실제 원고 사본을 준비한다. 텍스트는 확인한 제목과 원문을 Markdown으로 저장한다. 그대로 사용하라는 원고는 승인 질문을 반복하지 않는다.
 - design_slots/revise_slot_plan/revise_slot_metadata: N개의 구체 설명 목적과 장면을 정하고 원고 사본에 독립된 `<!-- naver-image:ID -->` 줄을 넣는다. `{"slots":[...]}` JSON과 사본을 slots 기록으로 등록한다. metadata 수정에서는 지정 alt만 바꾼다. 본문·공백 변경을 삽입으로 숨기지 않는다.

@@ -21,6 +21,7 @@ from build_naver_post import build_post
 from content_metrics import body_metrics
 from post_contract import load_json_object, BuildError
 from asset_integrity import inspect_asset,verify_asset
+from select_article_style import select_style, validate_selection, normalize_basis
 
 def read_json(path):
     # Existing loader also rejects duplicate keys and non-finite values.
@@ -43,11 +44,37 @@ def run_root(s):
     if any(p.is_symlink() for p in (root,*root.parents)): raise BuildError('unsafe work directory','UNSAFE_PATH')
     return root.resolve()
 
-def register_article(path,root,profile_path=None):
+def wizard_experience(s):
+    text=_option(s,'experience_basis')
+    if isinstance(text,dict): return normalize_basis(text)
+    if text and re.search(r'가정\s*(?:사례|상황)|가상의|가상\s*사례|허구|illustrative',text,re.I):
+        return {'type':'illustrative','evidence':[text]}
+    if text and re.fullmatch(r'(?:없음|미제공|경험\s*없음|실제\s*경험\s*없음|no\s+experience)',text.strip(),re.I):
+        return None
+    return {'type':'user_provided','evidence':[text]} if text and text!='source-based' else None
+
+
+def writing_style(s,title=None,selection=None):
+    if s['task_mode'] in {'images-only','edit-existing'}: return None
+    title=title or _option(s,'topic')
+    if not title: return None  # Rewrites resolve against the final H1 at registration.
+    requested=_option(s,'article_type','auto')
+    if selection is not None:
+        result=validate_selection(selection,title,experience_basis=wizard_experience(s) or {'type':'source_based','evidence':[]},require_semantic=True)
+        if result['requested_type']!=requested: raise BuildError('style differs from confirmed option','STALE_STYLE_SELECTION')
+        return result
+    return select_style(title,requested_type=requested,experience_basis=wizard_experience(s))
+
+
+def register_article(path,root,profile_path=None,*,session=None,style_selection=None):
     path=local_path(path,root)
     if path.suffix!='.md': raise BuildError('wizard article must be Markdown')
     digest=file_sha(path); post,warnings=build_post(path,Path(root),markdown_text=RAW_MARKER_RE.sub('',path.read_text(encoding='utf-8')))
     record={'path':str(path),'sha256':digest,'metrics':body_metrics(post),'warnings':warnings}
+    if session is not None and session['task_mode'] not in {'images-only','edit-existing'}:
+        selection=writing_style(session,post['title'],style_selection)
+        validate_selection(selection,post['title'],require_semantic=True)
+        record['style_selection']=selection
     if record['metrics']['body_char_count']==0: raise BuildError('substantive article required','BODY_REQUIRED')
     if profile_path:
         profile=local_path(profile_path,root); record['profile']={'path':str(profile),'sha256':file_sha(profile)}
@@ -156,7 +183,9 @@ def compile_image_request(s,slot_article,slots):
     if not slots or slots[0]['role']!='cover' or sum(x['role']=='cover' for x in slots)!=1: raise BuildError('one first cover is included in N','COMPLETION_ROLES_NOT_MET')
     result={'schema':'naver-blog-image-request/v1','article':{'path':str(article),'expected_sha256':slot_article['sha256']},
             'presentation':_option(s,'presentation'),'language':'ko','requested_count':count,
-            'article_type':_option(s,'article_type','information'),'format_preset':_option(s,'format_preset','auto'),
+            'article_type':(s.get('article') or {}).get('style_selection',{}).get('image_article_type',
+                {'expert':'information','troubleshooting':'howto'}.get(_option(s,'article_type'),_option(s,'article_type','information'))),
+            'format_preset':_option(s,'format_preset','auto'),
             'additional_requirements':'' if _option(s,'additional_requirements')=='none' else _option(s,'additional_requirements',''),
             'slots':normalize_slots(slots)}
     if 'aspect_ratios' in s['confirmed_options']:
@@ -252,6 +281,14 @@ def bind_asset(s,slot_id,path,provenance):
 
 def inspect_bindings(s):
     diagnostics=[]; root=run_root(s)
+    selection=(s.get('article') or {}).get('style_selection')
+    if selection is not None:
+        try:
+            path=local_path(s['article']['path'],root)
+            post,_=build_post(path,root,markdown_text=RAW_MARKER_RE.sub('',path.read_text(encoding='utf-8')))
+            writing_style(s,post['title'],selection)
+        except (ValueError,OSError) as exc:
+            diagnostics.append({'code':getattr(exc,'code','INVALID_STYLE_SELECTION'),'message':str(exc)})
     records=[s.get('article'),(s.get('article') or {}).get('profile'),s.get('slot_selection'),s.get('image_plan')]
     for record in records:
         if not record: continue

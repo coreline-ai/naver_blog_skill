@@ -51,3 +51,7 @@ lock은 O_EXCL/PID, 변경은 lock 내 reread/CAS/검증/temp/fsync/replace. fin
 세션 쓰기는 macOS/Linux의 표준 fcntl guard 안에서 O_EXCL/PID lock을 관리한다. guard 파일은 유지하고 OS가 프로세스 종료 시 잠금을 해제한다. stale PID lock 정리와 재획득의 경합도 이 guard로 막는다.
 
 검사 실패 복구는 repair 기록으로 해당 메타데이터만 무효화하고 다음 작업에서 새 버전을 등록한다. 파일은 삭제하지 않는다. 불명확한 intent는 먼저 reconcile해야 한다. 외부 입력 경로는 절대 경로, 실행용 상대 경로는 run_root 기준이다.
+
+## 제목 기반 구조 메타데이터
+
+article record payload는 기존 path/profile_path 외에 선택적 `style_selection` 객체를 받는다. 신규 auto 글은 `scripts/select_article_style.py`의 최종 H1 + 의미 판단 intent/reason 결과가 필요하다. 제목·옵션·경험 근거 불일치와 title_hint만 있는 최종 기록은 거부한다. 기존 선택 기록 없는 세션은 이관하지 않는다. 이미지 전용은 선택 기록을 만들거나 본문을 재분류하지 않는다. 출력의 ready는 문서/이미지 검수나 실행 권한이 아니다.

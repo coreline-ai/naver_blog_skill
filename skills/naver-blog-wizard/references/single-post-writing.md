@@ -2,7 +2,9 @@
 
 new/rewrite에서 현재 Codex가 작성한다. Python에 LLM/이미지 클라이언트를 추가하지 않는다.
 
-새 정보형·방법형·비교형은 [공통 블로그 본문 참고 흐름](../../../references/blog-research-workflow.md)을 본문 작성 전에 적용한다. 기본 section-blog 5개이며 최초 요청의 명시 검색 경로·참고 수·비활성화를 우선한다. 재작성은 검색 보완 명시 시에만 적용한다. 참고 자료·분석 메모는 작업 영역에 분리하고 원고를 기존 article 기록으로 등록한다. 새 조사 질문·세션 필드·record type을 추가하지 않으며 이미지의 requested_count와 참고 수를 공유하지 않는다.
+유형 auto는 [제목 중심 자동 구조](../../../references/title-driven-writing-style.md)에 따라 제목의 독자 의도를 의미로 판단한다. 최종 helper 결과를 article record payload의 `style_selection`에 넣는다. expert/troubleshooting도 명시 선택 가능하다. 유형과 개인 말투, 이미지 표현 유형은 서로 독립적이다.
+
+새 자료 기반 정보형·전문 해설형·방법형·비교형·문제 해결형·체크리스트형은 [공통 블로그 본문 참고 흐름](../../../references/blog-research-workflow.md)을 본문 작성 전에 적용한다. 기본 section-blog 5개이며 최초 요청의 명시 검색 경로·참고 수·비활성화를 우선한다. 재작성은 검색 보완 명시 시에만 적용한다. 참고 자료·분석 메모는 작업 영역에 분리하고 원고를 기존 article 기록으로 등록한다. 새 조사 질문·세션 필드·record type을 추가하지 않으며 이미지의 requested_count와 참고 수를 공유하지 않는다.
 
 - 주제·독자·유형·문체·분량·서식과 실제 자료를 사용한다. 시리즈 writer 전체를 호출해 15편·3,000자 최소·다음 편 예고를 적용하지 않는다.
 - short/medium/long은 약 800~1,200 / 1,500~2,200 / 2,500~3,500 공개 본문자 참고 목표다. 사용자 수치 우선이며 SEO/완료 게이트가 아니다.

@@ -12,6 +12,8 @@
 
 최소 editorial.json 예시:
 
+신규 자동 작성은 [제목 중심 구조](../../../references/title-driven-writing-style.md)의 helper 출력을 `style_selection`에 추가한다. 최종 H1·intent/reason·현재 요청의 명시 유형을 반영한다. 단일 글과 시리즈 모두 같은 선택기를 사용한다. 기존 파일에 소급하여 넣지 않는다.
+
 ```json
 {"series_id":"example-series","episode":3,"search_intent":"이번 편의 독자 질문","notes":[],"open_questions":[]}
 ```
