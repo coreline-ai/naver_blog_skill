@@ -15,7 +15,7 @@ sys.dont_write_bytecode = True
 SCHEMA = 'naver-blog-wizard-session/v1'
 ENUMS = {
  'task_mode': ('new','rewrite','images-only','edit-existing'),
- 'article_type': ('information','howto','comparison','review','place','story','checklist','auto'),
+ 'article_type': ('auto','information','comparison','howto','expert','review','place','story','checklist','troubleshooting'),
  'format_preset': ('auto','clean','magazine','review','comparison','checklist','emotional'),
  'image_action': ('none','prompt-only','generate','use-files'),
  'presentation': ('standard','info-slide','mixed'), 'reference_use': ('no','yes'),
@@ -62,6 +62,7 @@ LABELS = {'new':'새 글','rewrite':'원고 재작성','images-only':'원고 유
  'beginner':'초보 독자','general':'일반 독자','experienced':'경험 있는 독자',
  'plain':'담백하게','friendly':'친근하게','professional':'전문적으로','profile':'저장한 문체 사용',
  'information':'정보 정리','howto':'방법·순서 안내','comparison':'선택 기준 비교','review':'실제 경험 후기',
+ 'expert':'근거 중심 전문 해설','troubleshooting':'문제 해결',
  'place':'장소 안내','story':'이야기형','checklist':'체크리스트','clean':'간결한 서식','magazine':'잡지형 서식',
  'source-based':'실제 경험 없이 자료 기반 글로 변경','yes':'참고 이미지 사용','no':'참고 이미지 없음'}
 
@@ -103,6 +104,9 @@ def normalize_option(key,v):
     elif key=='length':
         if not ((isinstance(v,str) and v in CHOICES[key]) or (_int(v) and v>0)):
             raise WizardError('invalid length','INVALID_ANSWER')
+    elif key=='experience_basis' and isinstance(v,dict):
+        from wizard_artifacts import normalize_basis
+        return normalize_basis(v)
     elif not isinstance(v,str) or not v.strip() or '\x00' in v:
         raise WizardError('nonempty text required: '+key,'INVALID_ANSWER')
     return v.strip() if isinstance(v,str) else v
@@ -152,13 +156,22 @@ def _set_option(s,key,v,origin='answer'):
     if key=='task_mode': s['task_mode']=normalized
     if key=='experience_basis' and normalized=='source-based': _set_option(s,'article_type','information',origin)
 
+def _option_label(key,v):
+    if key=='aspect_ratios':
+        return '대표 1:1 · 본문 16:9' if v else '비율 지정 해제(기존 기본값)'
+    if key=='article_type' and v=='auto':
+        return '제목에 맞춰 자동 선택'
+    if key=='requested_count' and v=='auto':
+        return '추천 구성(5장)'
+    if key=='additional_requirements' and v=='none':
+        return '추가 요구 없음'
+    return LABELS.get(v,str(v))
+
 def _question(s,key,options=None):
     vals=list(options if options is not None else ENUMS.get(key,CHOICES.get(key,())))[:5]
     if key=='image_action' and s['task_mode']=='images-only': vals=[v for v in vals if v!='none']
     return {'kind':'question','revision':s['revision'],'question_id':f"{key}:r{s['revision']}",'key':key,
-            'title':TITLES[key],'options':[{'value':v,'label':
-                ('대표 1:1 · 본문 16:9' if v else '비율 지정 해제(기존 기본값)') if key=='aspect_ratios' else
-                ('추천 구성(5장)' if key=='requested_count' and v=='auto' else '추가 요구 없음' if key=='additional_requirements' and v=='none' else LABELS.get(v,str(v)))} for v in vals],'accepts_custom':True}
+            'title':TITLES[key],'options':[{'value':v,'label':_option_label(key,v)} for v in vals],'accepts_custom':True}
 
 def _action(s,name,**data):
     return {'kind':'action','revision':s['revision'],'action':name,**data}
@@ -187,9 +200,13 @@ def next_step(s,artifact_report=None):
     if mode!='images-only':
         for key in ('audience','article_type','tone','length','format_preset'):
             if key not in s['confirmed_options']: return _question(s,key)
-        if value(s,'article_type') in {'review','place'} and 'experience_basis' not in s['confirmed_options']:
+        from wizard_artifacts import writing_style
+        selection=s['article'].get('style_selection') if s['article'] else writing_style(s)
+        needs_experience=(value(s,'article_type') in {'review','place'} or
+            (not s['article'] and (value(s,'article_type')=='story' or (selection and selection['status']=='needs_experience'))))
+        if needs_experience and 'experience_basis' not in s['confirmed_options']:
             return _question(s,'experience_basis')
-    if not s['article']: return _action(s,'use_source_article' if mode=='images-only' else 'rewrite_article' if mode=='rewrite' else 'write_article',options=s['confirmed_options'])
+    if not s['article']: return _action(s,'use_source_article' if mode=='images-only' else 'rewrite_article' if mode=='rewrite' else 'write_article',options=s['confirmed_options'],**({'writing_style':selection} if mode!='images-only' else {}))
     review=value(s,'article_review')
     if review=='revise': return _action(s,'rewrite_article',article=s['article'],options=s['confirmed_options'])
     if review=='change': return _question(s,'article_change')
@@ -372,9 +389,9 @@ def record_event(s,event,expected_revision):
                 n['effect']=None; _drop(n,'image_plan_review','image_review')
         else: raise WizardError('unsupported repair target')
     elif kind=='article':
-        _fields(p,{'path'},{'profile_path'})
+        _fields(p,{'path'},{'profile_path','style_selection'})
         if not repair and action not in {'write_article','rewrite_article','use_source_article'}: raise WizardError('article not expected')
-        n['article']=a.register_article(p['path'],a.run_root(s),p.get('profile_path'))
+        n['article']=a.register_article(p['path'],a.run_root(s),p.get('profile_path'),session=s,style_selection=p.get('style_selection'))
         if value(s,'tone')=='profile' and not n['article'].get('profile'): raise WizardError('profile snapshot required')
         n['slot_selection']=None; n['image_plan']=None; n['completion']=None
         _drop(n,'article_review','image_plan_review','image_review')

@@ -198,11 +198,16 @@ def required_review_checks(*, version: int, styles: set[str] | None = None) -> s
     return set(V2_REVIEW_CHECKS) | {PROFILE_REVIEW_CHECKS[style] for style in selected}
 
 
+def style_selection_revision(selection: dict) -> str:
+    return hashlib.sha256(json.dumps(selection, ensure_ascii=False, sort_keys=True, allow_nan=False).encode()).hexdigest()
+
+
 def check_review(review: dict | None, revision: str | None, *, version: int = 1,
-                 styles: set[str] | None = None) -> tuple[str, list[str]]:
+                 styles: set[str] | None = None, style_selection: dict | None = None) -> tuple[str, list[str]]:
     if review is None:
         return 'review_pending', ['review file is missing']
-    fields(review, {'schema', 'status', 'content_revision', 'checks', 'reviewed_by', 'reviewed_at'}, set(), 'review')
+    fields(review, {'schema', 'status', 'content_revision', 'checks', 'reviewed_by', 'reviewed_at'},
+           {'style_selection_sha256'} if version == 2 else set(), 'review')
     expected_schema = f'naver-review/v{version}'
     if review['schema'] != expected_schema or review['status'] not in ('pending', 'passed', 'needs_revision'):
         raise BuildError('invalid review schema/status', 'INVALID_REVIEW')
@@ -235,6 +240,11 @@ def check_review(review: dict | None, revision: str | None, *, version: int = 1,
         return 'review_pending', ['content review has not passed']
     if review['content_revision'] != revision or revision is None:
         return 'stale_review', ['review does not match prepared content revision']
+    if style_selection is not None:
+        if review.get('style_selection_sha256') != style_selection_revision(style_selection):
+            return 'stale_review', ['review does not match the selected writing structure; review style_fit again']
+    elif 'style_selection_sha256' in review:
+        return 'stale_review', ['review has a writing structure binding but the selection is missing']
     if review['status'] == 'needs_revision':
         return 'needs_revision', ['reviewer requested revision; do not rewrite automatically']
     require_text(review['reviewed_by'], 'reviewed_by')
@@ -281,6 +291,25 @@ def validate_v2_editorial(editorial: dict, requirements: dict) -> None:
         raise BuildError('experience evidence must be nonempty strings', 'EXPERIENCE_BASIS_MISSING')
     if 'review' in styles and (basis['type'] == 'illustrative' or not basis['evidence']):
         raise BuildError('review profile requires user-provided or verified experience evidence', 'EXPERIENCE_BASIS_MISSING')
+
+
+def episode_requirements(editorial: dict, requirements: dict, title: str) -> dict:
+    """Opt-in per-article structure; never migrate legacy snapshots or image counts."""
+    selection = editorial.get('style_selection')
+    if selection is None:
+        return requirements
+    helper = SKILLS.parent / 'scripts/select_article_style.py'
+    if not helper.is_file():
+        raise BuildError('title-driven selection requires the common style helper; legacy inputs remain supported', 'DEPENDENCY_MISSING')
+    sys.path.insert(0, str(helper.parent))
+    from select_article_style import validate_selection, StyleError
+    try:
+        selected = validate_selection(selection, title, require_semantic=True, experience_basis=editorial.get(
+            'experience_basis', {'type': 'source_based', 'evidence': []}))
+    except StyleError as exc:
+        raise BuildError(str(exc), exc.code) from exc
+    return {**requirements, 'primary_style': selected['primary_style'],
+            'secondary_style': selected['secondary_style']}
 
 
 def build_slot_bindings(post: dict, slots: list[dict[str, str]]) -> list[dict[str, Any]]:
@@ -435,12 +464,14 @@ def derive_v2_episode_state(preflight: dict, metrics: dict, requirements: dict,
     }
 
 
-def review_template(revision: str | None, *, version: int, styles: set[str] | None = None) -> dict:
+def review_template(revision: str | None, *, version: int, styles: set[str] | None = None,
+                    style_selection: dict | None = None) -> dict:
     checks = required_review_checks(version=version, styles=styles)
     return {
         'schema': f'naver-review/v{version}',
         'status': 'pending',
         'content_revision': revision,
+        **({'style_selection_sha256': style_selection_revision(style_selection)} if style_selection is not None else {}),
         'checks': [
             {'id': name, 'status': 'pending', 'evidence': '' if version == 1 else []}
             for name in sorted(checks)
@@ -489,6 +520,9 @@ def prepare(manifest: Path, input_root: Path, output_root: Path, run_id: str, *,
     artifacts = {}; results = []; all_sources = [manifest_record]; all_assets = []
     review_signatures: dict[str, list[int]] = {}
     for ep in data['requested_episodes']:
+        effective = data['requirements']
+        review_styles = ({effective['primary_style'], effective['secondary_style']}
+                         if contract_version == 2 else None)
         result = {'episode': ep, 'status': 'missing', 'content_revision': None, 'errors': [], 'error_codes': []}
         if contract_version == 2:
             result.update(structure_ready=False, length_ready=False, editorial_ready=False,
@@ -502,15 +536,20 @@ def prepare(manifest: Path, input_root: Path, output_root: Path, run_id: str, *,
             records = [source_record(p) if p.is_file() else {'path': str(p), 'sha256': None}
                        for k, p in entry.items() if k != 'episode']
             editorial = load_json_object(entry['editorial'])  # Explicit separate data; never merged into body.
-            if contract_version == 2:
-                validate_v2_editorial(editorial, data['requirements'])
             composed, slots = compose(source, entry['image_slots'], root) if 'image_slots' in entry else (None, [])
             post, warnings = build_post(source, root, markdown_text=composed)
+            if contract_version == 2:
+                effective = episode_requirements(editorial, data['requirements'], post['title'])
+                validate_v2_editorial(editorial, effective)
+                review_styles = {effective['primary_style'], effective['secondary_style']}
             if post['episode'] not in (None, ep):
                 raise BuildError('manifest and article episode disagree', 'EPISODE_IDENTITY_CONFLICT')
             post['episode'] = ep
             expected_images = data['requirements']['images_per_episode'] if contract_version == 1 else None
             preflight = preflight_report(post, source, warnings, expected_images=expected_images, project_root=root, source_placement=source_placement)
+            if contract_version == 2 and editorial.get('style_selection') is not None:
+                preflight['style_selection'] = editorial['style_selection']
+                result['style_selection'] = editorial['style_selection']
             if contract_version == 2:
                 bindings = build_slot_bindings(post, slots)
                 caption_ids = [binding['caption_block_id'] for binding in bindings if binding['caption_block_id']]
@@ -543,7 +582,8 @@ def prepare(manifest: Path, input_root: Path, output_root: Path, run_id: str, *,
                           source_records=records, post=f'{folder}/naver-post.json', preflight=f'{folder}/preflight-report.json')
             try:
                 review = load_json_object(entry['review']) if entry['review'].is_file() else None
-                state, reasons = check_review(review, revision, version=contract_version, styles=review_styles)
+                state, reasons = check_review(review, revision, version=contract_version, styles=review_styles,
+                                              style_selection=result.get('style_selection'))
                 if review is not None:
                     artifacts[f'{folder}/review.json'] = encoded(review)
                 signature = v2_review_signature(review)
@@ -551,7 +591,8 @@ def prepare(manifest: Path, input_root: Path, output_root: Path, run_id: str, *,
                     review_signatures.setdefault(signature, []).append(ep)
                 if state != 'ready':
                     artifacts[f'{folder}/review-template.json'] = encoded(
-                        review_template(revision, version=contract_version, styles=review_styles)
+                        review_template(revision, version=contract_version, styles=review_styles,
+                                        style_selection=result.get('style_selection'))
                     )
             except (BuildError, OSError, UnicodeError) as exc:
                 state, reasons = 'invalid_review', [str(exc)]
@@ -588,7 +629,10 @@ def prepare(manifest: Path, input_root: Path, output_root: Path, run_id: str, *,
                 preflight.setdefault('review_error_codes', []).append('REVIEW_EVIDENCE_REUSED')
                 artifacts[name] = encoded(preflight)
                 artifacts[f'episode-{ep:02d}/review-template.json'] = encoded(
-                    review_template(result['content_revision'], version=2, styles=review_styles)
+                    review_template(result['content_revision'], version=2, styles={
+                        result.get('style_selection', data['requirements'])['primary_style'],
+                        result.get('style_selection', data['requirements'])['secondary_style'],
+                    }, style_selection=result.get('style_selection'))
                 )
     ready = all(e['status'] == 'ready' and (contract_version == 1 or e['draft_input_ready']) for e in results)
     report_schema = f'naver-series-prepared/v{contract_version}'
@@ -642,6 +686,18 @@ def validate_v2_snapshot_episode(directory: Path, entry: dict, requirements: dic
     assets = asset_document['assets']
     metrics = load_json_object(folder / 'content-metrics.json')
     preflight = load_json_object(folder / 'preflight-report.json')
+    editorial = load_json_object(folder / 'editorial.json')
+    effective = episode_requirements(editorial, requirements, post['title'])
+    validate_v2_editorial(editorial, effective)
+    if (entry.get('style_selection') != editorial.get('style_selection')
+            or preflight.get('style_selection') != editorial.get('style_selection')):
+        raise BuildError('style summary differs from canonical title/editorial', 'CORRUPT_SNAPSHOT')
+    if editorial.get('style_selection') is not None and preflight.get('content_review') == 'ready':
+        state, _ = check_review(load_json_object(folder / 'review.json'), entry['content_revision'],
+                                version=2, styles={effective['primary_style'], effective['secondary_style']},
+                                style_selection=editorial['style_selection'])
+        if state != 'ready':
+            raise BuildError('per-article style review is not ready', 'CORRUPT_SNAPSHOT')
     if metrics.get('schema') != 'naver-content-metrics/v1' or type(metrics.get('body_char_count')) is not int:
         raise BuildError('invalid content metrics artifact', 'CORRUPT_SNAPSHOT')
     if (preflight.get('schema') != 'naver-smarteditor-preflight/v2'
@@ -813,11 +869,13 @@ def status(run_directory: Path, *, execution_root: Path | None = None, target_bl
                 fresh=review_presentation(post,source_placement=stored.get('source_placement'))
                 if fresh!=stored:raise BuildError('presentation summary differs from canonical blocks','CORRUPT_SNAPSHOT')
                 row['presentation_ready']=fresh['status']=='passed'
-            styles = ({report['requirements']['primary_style'], report['requirements']['secondary_style']}
-                      if contract_version == 2 else None)
+            effective = (episode_requirements(load_json_object(folder / 'editorial.json'),
+                         report['requirements'], post['title']) if contract_version == 2 else None)
+            styles = ({effective['primary_style'], effective['secondary_style']} if effective else None)
             if entry['status'] == 'ready' and check_review(
                 load_json_object(folder / 'review.json'), entry['content_revision'],
                 version=contract_version, styles=styles,
+                style_selection=entry.get('style_selection'),
             )[0] != 'ready':
                 raise BuildError('review no longer ready', 'INVALID_REVIEW')
             if store is not None and blog is not None:

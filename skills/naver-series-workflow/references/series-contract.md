@@ -190,3 +190,11 @@ status는 snapshot·원본 provenance·이미지·정본 revision·검수 기록
 prepared_queue는 검수 통과 회차, remaining_episodes는 미완료 집합이다. queue는 모든 남은 회차가 새 시작 가능한 경우의 순차 후보다. 부분 입력·저장 불확실성에서는 queue=[]이고 next_episode/next_action에 대조할 회차를 표시한다. execution_root/blog 없이는 실행 가능 판정을 하지 않는다.
 
 execution_complete는 같은 environment의 모든 요청 회차가 blank_verified이고 conflict가 없을 때만 true다. simulation에서는 live_complete=false를 유지한다. live_complete도 로컬 이력 기반이며 ui_observed_now=false: 지금 화면이 비어 있다고 새로 확인한 것은 아니다.
+
+## 회차별 제목 기반 구조 (선택적·하위 호환)
+
+새 작성은 공통 `scripts/select_article_style.py`의 의미 판단 결과를 각 editorial.json의 `style_selection`에 둔다. 실제 경험 근거는 같은 파일의 `experience_basis`와 일치해야 한다. 선택기는 최종 정본 제목과 결합되며 title_hint만 있는 자동 결과는 prepare에서 거부한다.
+
+선택 기록이 있으면 해당 회차의 primary/secondary와 프로필 검수 항목에만 적용한다. 본문 하한·이미지 최소/목표·태그·저장 권한은 manifest 그대로다. prepare/read_snapshot/status가 같은 선택을 재검증한다. 선택 기록 없는 기존 v1/v2 자료는 재분류하지 않는다. 유형 선택 ready와 실제 본문 검수 ready는 다르다.
+
+자동 구조 기록이 있는 v2 review는 prepare가 만든 `style_selection_sha256`을 포함해야 한다. 원고가 같아도 구조·선택 이유·경험 근거가 달라지면 stale_review로 되돌린다. 새 template에서 실제 style_fit/title_body_match를 검토한 뒤에만 다시 통과 처리한다. 이 필드가 없는 과거 선택 기록 없는 review는 그대로 호환한다.
