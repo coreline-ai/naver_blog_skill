@@ -22,12 +22,13 @@ description: "네이버 단일 글 작성과 이미지 옵션을 한 번에 하�
 새 글/재작성의 auto는 [제목 중심 자동 구조](../../references/title-driven-writing-style.md)를 적용한다. write action의 후보는 의미 검수 전이다. 최종 H1에 대한 intent/reason을 helper에 전달한 결과를 article 기록의 `style_selection`으로 넘긴다. 사용자 유형과 개인 문체는 유지하며 이미지 전용·기존 세션은 강제 재분류하지 않는다.
 
 - write_article/rewrite_article: [단일 글 지침](references/single-post-writing.md)으로 별도 Markdown을 작성한다. 원문을 보존하고 메모를 분리해 article 기록을 등록한다. 새 원고는 사용 선택을 기다린다.
+- 원고 등록은 분량 미지정 신규 완성형을 3,000자 게이트로 검사한다. 명시 분량은 우선해 측정만 하며, 기존 원고 이미지 전용은 차단·본문 변경하지 않는다. 최신 본문 SHA와 검수 결과를 이미지 작업·입력 전에 다시 대조하고 의미 검수는 별도로 한다.
 - use_source_article: 실제 원고 사본을 준비한다. 텍스트는 확인한 제목과 원문을 Markdown으로 저장한다. 그대로 사용하라는 원고는 승인 질문을 반복하지 않는다.
 - design_slots/revise_slot_plan/revise_slot_metadata: N개의 구체 설명 목적과 장면을 정하고 원고 사본에 독립된 `<!-- naver-image:ID -->` 줄을 넣는다. `{"slots":[...]}` JSON과 사본을 slots 기록으로 등록한다. metadata 수정에서는 지정 alt만 바꾼다. 본문·공백 변경을 삽입으로 숨기지 않는다.
 - prepare_plan: `wizard_artifacts.py prepare-plan --session FILE`을 실행해 반환 payload를 plan 기록으로 등록한다. 외부 참고 파일에 대해 change가 반환되면 reference_path를 change로 정규화한 뒤 다시 실행한다. N은 표지 포함이다. info-slide는 표지까지 슬라이드, mixed만 일반 표지다. requires_design도 payload를 plan 기록으로 등록하면 다음 작업이 design_slots로 돌아간다. 요점 부족/반복은 재설계한다.
 - generate_image/edit_image/repair_image: imagegen 스킬과 현재 이미지 도구 지침을 따른다. effect-intent를 먼저 기록하고 실제 도구 파일/결과를 effect-result로 등록한다. 원고 없는 편집의 외부 edit_target은 intent 기록 시 검증된 바이트 사본으로 자동 보관되고 경로도 같은 상태 전이에서 정규화된다. 도구에는 기록 결과의 effect.target.path를 전달하며 실제 이미지를 먼저 확인한다. 참고 이미지가 있으면 plan.reference.path를 실제 도구의 참조 입력에 전달한다. 계획만으로 생성 완료를 보고하지 않는다.
 - import_image: 실제 사용자 파일을 effect-result로 등록한다. 생성 provenance를 만들지 않는다.
-- visual_review: 실제 이미지를 보고 한국어 문구·사실성·비율·모바일 가독성·문맥·묶음 차별성을 검사한다. slot_id/asset SHA/passed/관찰 notes를 등록한다. 자동 파일 검사로 시각 QA를 대체하지 않는다. 실패 슬롯은 한 번 보정 후 해결 선택을 묻는다.
+- visual_review: 실제 이미지를 보고 한국어 문구·사실성·비율·모바일 가독성·문맥·묶음 차별성을 검사한다. 생성·편집 이미지 안에 `AI 연출`(띄어쓰기 변형 포함)이 있으면 승인하지 않는다. AI 생성 여부는 사용자가 직접 처리하므로 캡션이나 인접 본문에 자동으로 설명하지 않는다. slot_id/asset SHA/passed/관찰 notes를 등록한다. 자동 파일 검사로 시각 QA를 대체하지 않는다. 실패 슬롯은 한 번 보정 후 해결 선택을 묻는다.
 - compose_article: 승인 파일·사용 선택 이후 `wizard_artifacts.py compose --session FILE`을 실행하고 package 기록을 등록한다. 원고·N장·manifest·합성 원고를 전달한다.
 - reconcile: 미완료 intent의 실제 반환과 파일을 먼저 확인한다. 불명확한 결과를 자동 재생성하지 않는다. 발견 결과 또는 명확한 실패를 기록한다.
 - repair_artifacts: 실제 검사 실패에서 repair 기록의 target으로 해당 메타데이터만 무효화하고 다음 작업에서 새 버전을 등록한다. 불명확한 intent를 먼저 reconcile한다. 정상 파일을 삭제하거나 문답 전체를 재시작하지 않는다.

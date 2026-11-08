@@ -82,7 +82,7 @@ class ImagePromptTests(unittest.TestCase):
         self.root=Path(self.temp.name).resolve()
         self.article=self.root/'article.md'
         self.article.write_text('# 출근길 겉옷\n\n출근길 활용 상황을 설명합니다.\n\n## 소재 비교\n\n가벼운 원단의 질감을 확인합니다. 봉제 부위를 가까이 봅니다.\n\n## 휴대 순서\n\n옷을 접어 가방에 넣습니다. 필요한 때 꺼내 입습니다.\n\n**태그**\n\n#겉옷\n',encoding='utf-8')
-        self.data={'schema':prompts.REQUEST_SCHEMA,'article':{'path':'article.md'},'presentation':'mixed',
+        self.data={'schema':prompts.REQUEST_SCHEMA,'article':{'path':'article.md'},'presentation':'mixed','body_length_policy':'preserve',
                    'slots':[self.slot('cover','cover',''),self.slot('material','inline','소재 비교'),self.slot('packing','inline','휴대 순서')]}
 
     def tearDown(self):
@@ -115,6 +115,19 @@ class ImagePromptTests(unittest.TestCase):
         self.assertEqual(self.plan(),plan)
         self.assertTrue(all(plan[k] is False for k in ['generation_performed','visual_ready','manifest_ready','ui_authorized']))
         self.assertTrue(all('status' not in e and 'path' not in e for e in plan['entries']))
+
+    def test_generated_prompts_prohibit_ai_label_without_automatic_disclosure(self):
+        for language in ('ko', 'en'):
+            for presentation in ('standard', 'info-slide', 'mixed'):
+                with self.subTest(language=language, presentation=presentation):
+                    self.data.update(language=language, presentation=presentation)
+                    plan = self.plan()
+                    for entry in plan['entries']:
+                        prompt = entry['prompt']
+                        self.assertIn('AI 연출', prompt)
+                        self.assertNotIn('outside the image' if language == 'en' else '이미지 밖', prompt)
+                        self.assertIn('Do not place' if language == 'en' else '넣지 마세요', prompt)
+                        self.assertEqual(json.loads(entry['manifest_prompt']), prompt)
 
     def test_role_ratios_keep_cover_and_inline_as_information_slides(self):
         self.data.update(presentation='info-slide', aspect_ratios={'cover':'1:1','inline':'16:9'})
@@ -594,6 +607,7 @@ class ImageCompletionTests(unittest.TestCase):
         fixture=ROOT/'tests/fixtures/blog-image-prompts'
         self.article.write_bytes((fixture/'article-five-slides.md').read_bytes())
         self.data=json.loads((fixture/'request-five-slides.json').read_text())
+        self.data['body_length_policy']='preserve'
         self.data['article']['path']='article.md'
         plan=self.plan(operation='generate-and-compose')
         self.assertEqual(plan['requested_count'],5)

@@ -28,6 +28,12 @@ python3.11 -B /absolute/path/to/naver-smarteditor-drafter/scripts/build_naver_po
 
 하나라도 실패하면 전체 입력 큐를 시작하지 않는다. 유효 후보의 prepared_queue는 진단 자료이지 부분 실행 허가가 아니다. prepare 통과는 사실성 검수 완료나 UI 입력 권한을 뜻하지 않는다. 게시 본문·편집 메모를 분리하고 미검토 핵심 주장과 검수 대상 버전 불일치를 해소한 뒤 draft로 넘어간다. 단독 사용도 본문 검수 근거를 확인하되 작성 스킬이 설치돼 있다고 가정하지 않는다.
 
+새 완성 원고는 `--content-mode full`(기본값)로 회차별 공개 본문 3,000자 이상을 검증한다. `간결하게`는 문체이지 짧은 글 요청이 아니다. 사용자가 짧은 분량·요약을 명시한 경우에만 `--content-mode explicit`, 이미 완성된 원고를 그대로 입력하는 경우에만 `--content-mode preserve`를 쓰고 `--scope-evidence`에 실제 요청을 기록한다. 문자열 기입만으로 사용자 의도·권한이 증명되는 것은 아니다. 명시적인 최소 글자 수는 explicit 모드의 `--explicit-minimum`으로 확인한다. 기존 저장 글을 분량 이유로 수정하거나 삭제하지 않는다.
+
+기존 [본문 분량 게이트](../../references/body-length-gate.md)의 계산·제외 규칙을 재사용한다. 별도 이미지 캡션을 Markdown 문단으로 삽입했으면 실제 캡션 블록 ID를 확인해 `--exclude-block-id`로 지정한다. 캡션 경계가 불명확하면 임의 추정하지 말고 검수를 보류한다. 기본 3,000자는 SEO 공식이나 사실·내용 품질의 보장이 아니다.
+
+단독 drafter 준비물의 실제 입력 직전에는 `python3 scripts/verify_prepared_content.py --run-directory /absolute/prepared/run --project-root /absolute/project`로 전 회차의 파일·원본·이미지 해시와 분량을 다시 확인한다. 단일 회차나 예외 모드도 동일하다. 변경·누락·미달이면 새 run으로 재준비하고 검수한다. 시리즈 v2 snapshot은 기존 series workflow의 snapshot 검증을 사용한다. 확인 스크립트는 구조·분량·무결성만 검증하며 사실 검수, 사용자 요청 및 실제 UI 입력을 허가하지 않는다. 과거 snapshot을 새 검증 통과로 취급하지 않는다.
+
 ## UI 실행 전 필수 자료
 
 - 사용자가 지정한 블로그·범위와 완료된 본문/콘텐츠 검수 근거.

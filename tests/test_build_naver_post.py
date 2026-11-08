@@ -50,6 +50,8 @@ class BuildNaverPostTests(unittest.TestCase):
             "episode_max": None,
             "expected_images": 1,
             "expected_tags": 2,
+            "content_mode": "preserve",
+            "scope_evidence": "test fixture explicitly requested as exact existing text",
         }
         values.update(overrides)
         return argparse.Namespace(**values)

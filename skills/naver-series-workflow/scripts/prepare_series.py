@@ -110,7 +110,7 @@ def load_manifest(path: Path, root: Path) -> dict:
         allowed_requirements = {
             'content_mode', 'primary_style', 'secondary_style', 'min_body_chars',
             'visual_mode', 'min_images_per_episode', 'target_images_per_episode',
-            'tag_line_max_chars',
+            'tag_line_max_chars', 'title_policy',
         }
     req = fields(data['requirements'], set(), allowed_requirements, 'requirements')
     visual_mode = req.get('visual_mode')
@@ -165,6 +165,10 @@ def load_manifest(path: Path, root: Path) -> dict:
             'min_images_per_episode': minimum_images,
             'target_images_per_episode': target_images,
         }
+        if 'title_policy' in req:
+            if req['title_policy'] not in {'homefeed-v1', 'fixed-v1', 'explicit-other-v1'}:
+                raise BuildError('unsupported title policy', 'INVALID_CONTRACT')
+            normalized_requirements['title_policy'] = req['title_policy']
     limit = require_int(req.get('tag_line_max_chars', 100), 'tag_line_max_chars')
     if limit > 100:
         raise BuildError('tag_line_max_chars may tighten but not exceed 100', 'INVALID_CONTRACT')
@@ -310,6 +314,40 @@ def episode_requirements(editorial: dict, requirements: dict, title: str) -> dic
         raise BuildError(str(exc), exc.code) from exc
     return {**requirements, 'primary_style': selected['primary_style'],
             'secondary_style': selected['secondary_style']}
+
+
+def validate_title_decision(editorial: dict, requirements: dict, title: str) -> None:
+    """Validate evidence of a title decision, not its semantic quality or CTR."""
+    policy = requirements.get('title_policy')
+    if policy is None:  # Historical v2 inputs remain readable and resumable.
+        return
+    decision = editorial.get('title_decision')
+    if not isinstance(decision, dict):
+        raise BuildError('title decision record is required', 'TITLE_DECISION_MISSING')
+    fields(decision, {'schema', 'policy', 'selected', 'selection_reason', 'fact_check',
+                      'pattern_evidence', 'candidates'}, {'requested_count'}, 'title decision')
+    if decision['schema'] != 'naver-title-decision/v1' or decision['policy'] != policy:
+        raise BuildError('title policy and decision disagree', 'TITLE_DECISION_INVALID')
+    if decision['selected'] != title:
+        raise BuildError('selected title does not match article H1', 'TITLE_DECISION_STALE')
+    for key in ('selection_reason', 'fact_check', 'pattern_evidence'):
+        require_text(decision[key], 'title ' + key)
+    candidates = decision['candidates']
+    if not isinstance(candidates, list):
+        raise BuildError('title candidates must be an array', 'TITLE_DECISION_INVALID')
+    minimum = require_int(decision.get('requested_count', 3 if policy == 'homefeed-v1' else 1),
+                          'title requested_count', minimum=1)
+    if len(candidates) < minimum:
+        raise BuildError('not enough title candidates', 'TITLE_DECISION_INCOMPLETE')
+    for item in candidates:
+        fields(item, {'title', 'pattern'}, set(), 'title candidate')
+        require_text(item['title'], 'candidate title')
+        require_text(item['pattern'], 'candidate pattern')
+    titles = [item['title'] for item in candidates]
+    if len(set(titles)) != len(titles) or title not in titles:
+        raise BuildError('title candidates must be distinct and contain H1', 'TITLE_DECISION_INVALID')
+    if policy == 'homefeed-v1' and minimum > 1 and len({item['pattern'] for item in candidates}) < 2:
+        raise BuildError('home-feed candidates require varied patterns', 'TITLE_DECISION_INCOMPLETE')
 
 
 def build_slot_bindings(post: dict, slots: list[dict[str, str]]) -> list[dict[str, Any]]:
@@ -539,6 +577,7 @@ def prepare(manifest: Path, input_root: Path, output_root: Path, run_id: str, *,
             composed, slots = compose(source, entry['image_slots'], root) if 'image_slots' in entry else (None, [])
             post, warnings = build_post(source, root, markdown_text=composed)
             if contract_version == 2:
+                validate_title_decision(editorial, data['requirements'], post['title'])
                 effective = episode_requirements(editorial, data['requirements'], post['title'])
                 validate_v2_editorial(editorial, effective)
                 review_styles = {effective['primary_style'], effective['secondary_style']}
@@ -687,6 +726,7 @@ def validate_v2_snapshot_episode(directory: Path, entry: dict, requirements: dic
     metrics = load_json_object(folder / 'content-metrics.json')
     preflight = load_json_object(folder / 'preflight-report.json')
     editorial = load_json_object(folder / 'editorial.json')
+    validate_title_decision(editorial, requirements, post['title'])
     effective = episode_requirements(editorial, requirements, post['title'])
     validate_v2_editorial(editorial, effective)
     if (entry.get('style_selection') != editorial.get('style_selection')
@@ -787,9 +827,11 @@ def read_snapshot(directory: Path) -> dict:
             'visual_mode', 'min_images_per_episode', 'target_images_per_episode',
             'tag_line_max_chars',
         }
-        if (not isinstance(requirements, dict) or set(requirements) != requirement_fields
+        if (not isinstance(requirements, dict) or set(requirements) not in (requirement_fields, requirement_fields | {'title_policy'})
                 or report.get('quality_contract') != 'full-article-v2'):
             raise BuildError('missing v2 quality contract', 'CORRUPT_SNAPSHOT')
+        if 'title_policy' in requirements and requirements['title_policy'] not in {'homefeed-v1', 'fixed-v1', 'explicit-other-v1'}:
+            raise BuildError('invalid title policy', 'CORRUPT_SNAPSHOT')
         minimum_body = requirements.get('min_body_chars')
         minimum_images = requirements.get('min_images_per_episode')
         target_images = requirements.get('target_images_per_episode')

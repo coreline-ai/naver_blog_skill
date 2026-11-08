@@ -27,7 +27,8 @@ class ConverterRegressionTests(unittest.TestCase):
         return path
     def args(self,**kw):
         options=dict(input=None,input_root=str(self.series),project_root=str(self.root),output_root=str(self.root/'runs'),
-                     run_id='test',batch=True,check=False,force=False,episode_min=None,episode_max=None,expected_images=None,expected_tags=None)
+                     run_id='test',batch=True,check=False,force=False,episode_min=None,episode_max=None,expected_images=None,expected_tags=None,
+                     content_mode='preserve',scope_evidence='test fixture explicitly requested as exact existing text')
         options.update(kw);return argparse.Namespace(**options)
     def basic(self,ep=3,**kw):
         value={'episode':ep,'title':f'{ep}편','blocks':[{'type':'paragraph','text':'본문'}],**kw}

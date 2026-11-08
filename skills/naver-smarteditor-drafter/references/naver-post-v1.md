@@ -55,6 +55,10 @@ Markdown과 구조형 JSON을 동일한 순서형 블록으로 바꾸어 SmartEd
 
 ## 검증
 
+CLI 기본 `--content-mode full`은 공유 content_metrics로 본문 3,000자 이상을 검사한다. 사용자가 명시적으로 짧은 글·분량을 요청하면 `--content-mode explicit --scope-evidence '<실제 요청>'`을 사용하고, 명시적 최소가 있을 때만 `--explicit-minimum N`으로 강제한다. 이미 완성된 원고를 그대로 입력해 달라는 요청은 `--content-mode preserve --scope-evidence '<실제 요청>'`이며 3,000자 미달로 변경·차단하지 않는다. 명시 모드는 실제 요청 확인을 대신하지 않는다. 두 예외에서 별도 최소가 없으면 `length_ready=null`이며 3,000자 통과가 아니다. 분량 정책과 검수 증거는 새 snapshot에 기록하고 이전 snapshot은 보존한다.
+
+식별된 캡션 문단이 canonical post에서 이미지 바로 뒤에 있으면 `--exclude-block-id ID`로 제외하며, 중복·없는 ID·인접하지 않은 블록은 거부한다. 캡션 경계가 불명확하면 자동 추측하지 않는다. 시리즈 v2는 기존 슬롯/캡션 binding 검사를 사용한다. `verify_prepared_content.py`는 입력 직전에 준비 snapshot의 파일·원본·이미지·revision·실제 분량을 재검증하지만 내용 사실성이나 UI 권한을 부여하지 않는다.
+
 - 이미지 파일은 존재하는 일반 파일이며 지정한 프로젝트 루트 안에 있어야 한다.
 - `..`를 포함한 이미지 경로와 프로젝트 밖으로 해석되는 경로를 거부한다.
 - 제목, 블록 ID, 태그는 비어 있을 수 없다.

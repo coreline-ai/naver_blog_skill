@@ -23,6 +23,8 @@ from presentation_quality import review_presentation
 SCHEMA = "naver-post/v1"
 RUN_SCHEMA = "naver-smarteditor-run/v2"
 RENDER_POLICY = "smarteditor-layout/v2"
+CONTENT_MODES = {'full', 'preserve', 'explicit'}
+DEFAULT_MIN_BODY_CHARS = 3000
 IMAGE_RE = re.compile(r"^!\[([^]]*)\]\((?:<([^>]+)>|([^\s)]+))\)\s*$")
 HEADING_RE = re.compile(r"^(#{1,3})\s+(.+?)\s*$")
 LIST_RE = re.compile(r"^\s*(?:(\d+)\.|[-+*])\s+(.+?)\s*$")
@@ -496,6 +498,11 @@ def preflight_report(
     expected_images: int | None = None, expected_tags: int | None = None,
     project_root: Path | None = None,
     source_placement: str = 'end',
+    content_mode: str | None = None,
+    scope_evidence: str | None = None,
+    min_body_chars: int = DEFAULT_MIN_BODY_CHARS,
+    explicit_minimum: int | None = None,
+    excluded_block_ids: tuple[str, ...] = (),
 ) -> dict[str, Any]:
     validate_post(post)
     for value,field in ((expected_images,'expected_images'),(expected_tags,'expected_tags')):
@@ -515,6 +522,38 @@ def preflight_report(
                    (b['type']=='list' and b['items']) or (b['type']=='table' and b['rows']) or
                    (b['type']=='callout' and b['text'].strip()) for b in post['blocks'])
     if not meaningful: error('informative post requires substantive body content','BODY_REQUIRED')
+    metrics = None
+    length_ready = None
+    if content_mode is not None:
+        if content_mode not in CONTENT_MODES:
+            raise BuildError('unsupported content mode', 'INVALID_CONTENT_MODE')
+        require_int(min_body_chars, 'min_body_chars', minimum=DEFAULT_MIN_BODY_CHARS)
+        if content_mode != 'full' and (not isinstance(scope_evidence, str) or not scope_evidence.strip()):
+            raise BuildError('an explicit user request is required for a short or exact-input mode', 'SCOPE_EVIDENCE_REQUIRED')
+        if explicit_minimum is not None:
+            require_int(explicit_minimum, 'explicit_minimum', minimum=1)
+            if content_mode != 'explicit': raise BuildError('explicit minimum is only for explicit mode', 'INVALID_CONTENT_MODE')
+        ids = [b['id'] for b in post['blocks']]
+        if len(set(excluded_block_ids)) != len(excluded_block_ids):
+            raise BuildError('duplicate caption block IDs', 'INVALID_CAPTION_BLOCK')
+        for caption_id in excluded_block_ids:
+            if caption_id not in ids: raise BuildError('caption block ID not found', 'INVALID_CAPTION_BLOCK')
+            index = ids.index(caption_id)
+            if index < 1 or post['blocks'][index]['type'] != 'paragraph' or post['blocks'][index-1]['type'] != 'image':
+                raise BuildError('excluded caption must be a paragraph immediately after an image', 'INVALID_CAPTION_BLOCK')
+        # Reuse the series implementation so reference sections, headings, Unicode,
+        # whitespace and images are counted consistently rather than reimplemented.
+        metrics_path = Path(__file__).resolve().parents[2] / 'naver-series-workflow' / 'scripts'
+        if not (metrics_path / 'content_metrics.py').is_file():
+            raise BuildError('series content metrics are required; length was not checked', 'DEPENDENCY_MISSING')
+        if str(metrics_path) not in sys.path:
+            sys.path.insert(0, str(metrics_path))
+        from content_metrics import body_metrics
+        metrics = body_metrics(post, excluded_block_ids=excluded_block_ids)
+        threshold = min_body_chars if content_mode == 'full' else explicit_minimum if content_mode == 'explicit' else None
+        length_ready = metrics['body_char_count'] >= threshold if threshold is not None else None
+        if length_ready is False:
+            error(f"public body requires at least {threshold} characters; found {metrics['body_char_count']}", 'BODY_TOO_SHORT')
     root=Path(project_root or source.parent).resolve()
     for b in post['blocks']:
         if b['type']=='image':
@@ -527,7 +566,10 @@ def preflight_report(
             'block_count':len(post['blocks']),'block_counts':counts,'image_count':counts.get('image',0),
             'tag_count':len(post['tags']),'tag_string_length':len(' '.join('#'+t for t in post['tags'])),
             'asset_integrity':assets,'warnings':list(warnings),'errors':errors,'error_codes':error_codes,
-            'presentation_review':presentation,'content_review':'not_evaluated','ui_verification':'not_performed'}
+            'presentation_review':presentation,'content_review':'not_evaluated','ui_verification':'not_performed',
+            'content_mode':content_mode,'scope_evidence':scope_evidence if content_mode and content_mode != 'full' else None,
+            'min_body_chars':min_body_chars if content_mode == 'full' else None,'explicit_minimum':explicit_minimum,
+            'body_metrics':metrics,'length_ready':length_ready}
 
 
 def _atomic_write(path: Path, content: str) -> None:
@@ -579,10 +621,15 @@ def _destination_name(post: dict[str, Any], source: Path) -> str:
 
 
 def _prepare_one(source: Path, project_root: Path, *, expected_images: int | None,
-                 expected_tags: int | None, source_placement: str = 'end') -> tuple[dict[str, Any], dict[str, Any]]:
+                 expected_tags: int | None, source_placement: str = 'end',
+                 content_mode: str = 'full', scope_evidence: str | None = None,
+                 min_body_chars: int = DEFAULT_MIN_BODY_CHARS, explicit_minimum: int | None = None,
+                 excluded_block_ids: tuple[str, ...] = ()) -> tuple[dict[str, Any], dict[str, Any]]:
     post,warnings=build_post(source,project_root)
     report=preflight_report(post,source,warnings,expected_images=expected_images,
-                            expected_tags=expected_tags,project_root=project_root,source_placement=source_placement)
+                            expected_tags=expected_tags,project_root=project_root,source_placement=source_placement,
+                            content_mode=content_mode,scope_evidence=scope_evidence,min_body_chars=min_body_chars,
+                            explicit_minimum=explicit_minimum,excluded_block_ids=excluded_block_ids)
     if report['errors']:
         raise BuildError('; '.join(report['errors']),report['error_codes'][0])
     return post,report
@@ -641,6 +688,18 @@ def write_prepared_run(run_directory: Path, artifacts: dict[str,str], *, reuse: 
 def run(args: argparse.Namespace) -> dict[str, Any]:
     project_root=Path(args.project_root or Path.cwd()).expanduser().resolve()
     run_directory=safe_run_directory(Path(args.output_root),args.run_id)
+    content_mode=getattr(args,'content_mode','full')
+    scope_evidence=getattr(args,'scope_evidence',None)
+    min_body_chars=getattr(args,'min_body_chars',DEFAULT_MIN_BODY_CHARS)
+    if content_mode not in CONTENT_MODES: raise BuildError('unsupported content mode','INVALID_CONTENT_MODE')
+    require_int(min_body_chars,'min_body_chars',minimum=DEFAULT_MIN_BODY_CHARS)
+    explicit_minimum=getattr(args,'explicit_minimum',None)
+    excluded_block_ids=tuple(getattr(args,'exclude_block_id',None) or ())
+    if explicit_minimum is not None:
+        require_int(explicit_minimum,'explicit_minimum',minimum=1)
+        if content_mode != 'explicit': raise BuildError('explicit minimum is only for explicit mode','INVALID_CONTENT_MODE')
+    if content_mode != 'full' and (not isinstance(scope_evidence,str) or not scope_evidence.strip()):
+        raise BuildError('an explicit user request is required for a short or exact-input mode','SCOPE_EVIDENCE_REQUIRED')
     for value,field in ((args.episode_min,'episode_min'),(args.episode_max,'episode_max')):
         if value is not None: require_int(value,field,minimum=1)
     if args.episode_min is not None and args.episode_max is not None and args.episode_min>args.episode_max:
@@ -663,12 +722,15 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         try:
             episode=_episode_number(source)
             post,report=_prepare_one(source,project_root,expected_images=args.expected_images,expected_tags=args.expected_tags,
-                                     source_placement=getattr(args,'source_placement','end'))
+                                     source_placement=getattr(args,'source_placement','end'), content_mode=content_mode,
+                                     scope_evidence=scope_evidence,min_body_chars=min_body_chars,
+                                     explicit_minimum=explicit_minimum,excluded_block_ids=excluded_block_ids)
             destination=_destination_name(post,source)
             if destination in destinations: raise BuildError('duplicate output destination','EPISODE_IDENTITY_CONFLICT')
             destinations.add(destination)
             prepared.append((source,post,report))
-            episodes.append({'episode':post['episode'],'title':post['title'],'source':str(source),'status':'prepared','error':None})
+            episodes.append({'episode':post['episode'],'title':post['title'],'source':str(source),'status':'prepared','error':None,
+                             'body_char_count':report['body_metrics']['body_char_count'],'length_ready':report['length_ready']})
         except (BuildError,OSError,UnicodeError) as exc:
             failures+=1
             episodes.append({'episode':episode,'title':None,'source':str(source),'status':'failed','error':str(exc),'error_code':getattr(exc,'code','INPUT_READ_ERROR')})
@@ -681,7 +743,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     report={'schema':RUN_SCHEMA,'status':'prepared' if failures==0 else 'preflight_failed',
             'run_id':args.run_id,'project_root':str(project_root),'requested_episodes':requested,
             'missing':missing,'queue':prepared_queue if failures==0 else [],'prepared_queue':prepared_queue,
-            'ui_executable':False,'content_review':'not_evaluated',
+            'ui_executable':False,'content_review':'not_evaluated','content_mode':content_mode,
             'totals':{'inputs':len(sources),'prepared':len(prepared),'failed':failures,
                       'blocks':sum(len(p['blocks']) for _,p,_ in prepared),
                       'images':sum(r['image_count'] for _,_,r in prepared),'tags':sum(r['tag_count'] for _,_,r in prepared)},
@@ -715,6 +777,13 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--episode-max", type=int)
     parser.add_argument("--expected-images", type=int)
     parser.add_argument("--expected-tags", type=int)
+    parser.add_argument('--content-mode', choices=sorted(CONTENT_MODES), default='full',
+                        help='full article by default; use another mode only for an explicit user request')
+    parser.add_argument('--scope-evidence', help='the explicit user request for preserve or explicit mode')
+    parser.add_argument('--explicit-minimum', type=int, help='explicitly requested minimum in explicit mode')
+    parser.add_argument('--exclude-block-id', action='append', default=[], help='verified caption paragraph block ID')
+    parser.add_argument('--min-body-chars', type=int, default=DEFAULT_MIN_BODY_CHARS,
+                        help='full article minimum, at least 3000 (not an SEO claim)')
     parser.add_argument("--source-placement", choices=('end','inline'), default='end',
                         help="profile default: sources at end; inline only for an explicit user request")
     return parser

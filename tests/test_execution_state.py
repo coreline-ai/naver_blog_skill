@@ -229,7 +229,7 @@ class ExecutionStateTests(unittest.TestCase):
         self.complete();summary=self.store.write_summary(self.key,self.lease)
         before={str(p):p.read_bytes() for p in (self.root/'ledger').rglob('*') if p.is_file()}
         source=self.root/'episode-03.md';source.write_text('# 제목\n\n본문')
-        args=argparse.Namespace(input=str(source),input_root=None,project_root=str(self.root),output_root=str(self.root/'prepared'),run_id='run',batch=False,check=False,force=False,episode_min=None,episode_max=None,expected_images=0,expected_tags=0)
+        args=argparse.Namespace(input=str(source),input_root=None,project_root=str(self.root),output_root=str(self.root/'prepared'),run_id='run',batch=False,check=False,force=False,episode_min=None,episode_max=None,expected_images=0,expected_tags=0,content_mode='preserve',scope_evidence='test fixture explicitly requested as exact existing text')
         run(args);args.force=True;run(args)
         self.assertEqual(before,{str(p):p.read_bytes() for p in (self.root/'ledger').rglob('*') if p.is_file()})
         self.assertEqual(json.loads(summary.read_text())['state'],'blank_verified')

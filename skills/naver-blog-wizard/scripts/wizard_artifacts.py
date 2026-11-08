@@ -19,6 +19,7 @@ for relative in ('scripts','skills/naver-smarteditor-drafter/scripts','skills/na
     sys.path.insert(0,str(REPO/relative))
 from build_naver_post import build_post
 from content_metrics import body_metrics
+from check_blog_body_length import check_length
 from post_contract import load_json_object, BuildError
 from asset_integrity import inspect_asset,verify_asset
 from select_article_style import select_style, validate_selection, normalize_basis
@@ -76,6 +77,14 @@ def register_article(path,root,profile_path=None,*,session=None,style_selection=
         validate_selection(selection,post['title'],require_semantic=True)
         record['style_selection']=selection
     if record['metrics']['body_char_count']==0: raise BuildError('substantive article required','BODY_REQUIRED')
+    if session is not None:
+        # Existing/source-only work is measured, never blocked or rewritten by a new default.
+        mode = ('preserve' if session['task_mode'] in {'images-only', 'edit-existing'} else
+                'explicit' if _option(session, 'length') is not None else 'full')
+        gate = check_length(post, mode=mode)
+        record['length_gate'] = gate
+        if gate['status'] == 'failed':
+            raise BuildError('public body requires at least 3000 characters; found '+str(gate['body_char_count']), 'CONTENT_TOO_SHORT')
     if profile_path:
         profile=local_path(profile_path,root); record['profile']={'path':str(profile),'sha256':file_sha(profile)}
     if file_sha(path)!=digest: raise BuildError('article changed','STALE_ARTICLE')
@@ -188,6 +197,8 @@ def compile_image_request(s,slot_article,slots):
             'format_preset':_option(s,'format_preset','auto'),
             'additional_requirements':'' if _option(s,'additional_requirements')=='none' else _option(s,'additional_requirements',''),
             'slots':normalize_slots(slots)}
+    if (s.get('article') or {}).get('length_gate'):
+        result['body_length_policy'] = s['article']['length_gate']['mode']
     if 'aspect_ratios' in s['confirmed_options']:
         result['aspect_ratios'] = normalize_aspect_ratios(_option(s,'aspect_ratios'))
     if _option(s,'reference_use')=='yes':

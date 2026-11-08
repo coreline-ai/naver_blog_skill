@@ -124,6 +124,8 @@ Each prompt should state:
 
 Do not add invented people, events, products, or claims that the article does not imply.
 
+Do not put “AI 연출” (including spacing variants) inside generated or edited images, including on covers and information slides. Check slot prompts and supplemental instructions for conflicting requests before calling the image tool. Do not automatically add AI-generation disclosures in captions or adjacent text; the user handles those. Do not present generated scenes as evidence of actual experiences or real events.
+
 ## 7. Generate and persist files
 
 For project-bound images:
@@ -148,7 +150,7 @@ Review each asset against these categories:
 | `context` | The image supports the nearby section | Generic finance image under a timing explanation |
 | `factuality` | Times, objects, and relationships do not contradict the article | Wrong clock time or impossible process |
 | `anatomy` | Faces, hands, posture, and devices look plausible | Extra fingers or fused objects |
-| `text` | Required text is exact; otherwise no legible invented text | Broken Korean or fake labels |
+| `text` | Required text is exact; otherwise no legible invented text; no “AI 연출” inside the image | Broken Korean, fake labels, or “AI 연출” embedded in the image |
 | `brand` | No unauthorized logo or fabricated official UI | Fake brokerage or government interface |
 | `style` | The selected media serve the topic and remain coherent with the article's brief; intentional photo/diagram mixes are allowed | Copying the previous topic's look or changing medium without an explanatory reason |
 | `purposeful_variety` | Each slot adds distinct information; the multi-article set reflects different contexts or a deliberate series identity | Same desk, cards, camera angle, or comparison panels with only labels/backgrounds changed |
@@ -158,14 +160,14 @@ If one category fails, make at most one targeted regeneration that changes only 
 
 Inspect the set as well as individual files. Unique filenames or pixel hashes prove distinct assets, not contextual variety or visual quality. Include a concrete topic/section-fit finding in the visual review; if the whole concept is wrong, correct that concept instead of merely recoloring the background. This is manual visual QA, not an automatic semantic guarantee from the composer.
 
-For UI instructions, official forms, branded products, or evidence images, use an actual user-provided or official source image. A generated conceptual UI may be used only when exact operation is not being taught, contains no copied branding, and is clearly described as illustrative.
+For UI instructions, official forms, branded products, or evidence images, use an actual user-provided or official source image. A generated conceptual UI may be used only when exact operation is not being taught, contains no copied branding, and cannot be mistaken for an actual interface.
 
 ## 9. Write alt text and captions
 
 - Alt text should describe the information or situation a reader would miss, not start with “이미지” or repeat the filename.
 - Captions should explain why the image matters to the adjacent paragraph.
 - Keep factual details in the article body even when they also appear visually.
-- When a photorealistic scene is illustrative rather than documentary, say so in the caption if confusion is plausible.
+- Do not automatically add an AI-generation disclosure to captions or adjacent text; the user handles it.
 - The composer binds each non-empty caption to the paragraph immediately following its image. Only that block id is excluded from v2 body length; identical wording elsewhere remains body text.
 
 ## 10. Compose the article

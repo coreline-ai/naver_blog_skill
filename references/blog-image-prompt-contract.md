@@ -31,6 +31,8 @@ CLI: `--input REQUEST.json --project-root ROOT (--check | --output PLAN.json) [-
 
 **완성 모드의 장수:** `generate-and-compose`는 명시 requested_count를 정확한 완료 수량으로 사용한다. 미지정 단일 글은 총 5장, 시리즈 required는 기존 스타일 목표다. 완성 요청의 slots는 에이전트가 직접 설계한 명시 목록이어야 한다. 무슬롯·부족·잘못된 cover 구조는 insufficient/next_action=design_slots로 되돌린다. 원본 호환 source 상한을 수정하거나 일반 장면으로 자동 보충해 완료하지 않는다. plan-only의 auto 계산과 원본 비교 함수는 유지한다. 정상 완성 계획의 next_action=generate_images는 에이전트가 실제 도구를 이어서 호출해야 한다는 뜻이다.
 
+본문 원고의 `generate-and-compose`에는 실제 사용자 요청을 판정한 `body_length_policy`가 필수다. 새 완성형은 `full`, 명시적 짧은 요청은 `explicit`, 기존 원고를 변경하지 않는 이미지 전용은 `preserve`다. 누락 또는 full 미달은 생성 전 오류다. 정책 값은 사용자 의도·사실 검수를 증명하지 않으며, 원고 revision과 별도 의미 검수를 확인한다. plan-only와 기존 이미지 편집은 이 요구로 차단하지 않는다.
+
 article에는 path, 선택적 source_type/title/expected_sha256/rewrite_revision을 받는다. 기본 source_type=article은 기존 Markdown·구조형 JSON·canonical post 지원 문법을 따른다. `provided-article`은 title과 원문 텍스트 파일을 받으며 전체 본문을 그대로 문맥 데이터로 전달한다. `rewrite-applied`는 이미 적용한 원문만 받으며 expected_sha256과 rewrite_revision이 필수다. SHA-256은 입력 파일 바이트 버전 확인값이며 기존 content_revision을 대체하지 않는다. 본문을 재작성하거나 N장에 맞춰 재분배하지 않는다.
 
 title은 UTF-16 200 units, 문맥 본문은 30,000 units까지다. 제공 원고의 CRLF/CR 정규화·외곽 공백 제거는 원본과 같으며 파일 바이트는 보존한다. 초과 입력은 자동 절단하지 않는다. 일반 원고 문맥은 기존 파서의 공개 텍스트 블록에서 추출하고 태그·이미지·참고자료는 제외한다. 빈 본문·제목/레이블만 있는 원고를 의미 있는 계획으로 만들지 않는다.

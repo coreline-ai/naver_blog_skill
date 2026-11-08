@@ -54,7 +54,7 @@ Prompt for:
 
 Avoid money piles, exaggerated celebration, staged pointing, generic corporate handshakes, impossible screens, and cinematic effects that conflict with an everyday blog voice.
 
-If a scene is not the author's real photo, avoid captions that imply “제가 직접 찍은 사진입니다.” Use neutral wording or disclose that it aids understanding.
+If a scene is not the author's real photo, avoid captions that imply “제가 직접 찍은 사진입니다.” Do not automatically add an AI-generation disclosure; the user handles it.
 
 ## `infographic-diagram`
 
@@ -86,7 +86,7 @@ Requirements:
 - no actionable transaction details presented as real
 - no invented official labels
 - minimal or unreadable placeholder text unless exact text is required and verified
-- caption that identifies the visual as conceptual when ambiguity remains
+- choose a visibly non-real design that cannot be mistaken for an actual interface; do not add an automatic AI-generation disclosure
 
 For operational tutorials, request a real screenshot or use an official source. Do not use a generated UI as evidence that a feature exists.
 

@@ -17,6 +17,84 @@ import prepare_series as workflow
 
 
 class SeriesPreparationV2Tests(unittest.TestCase):
+    def test_homefeed_title_gate_rejects_missing_stale_and_incomplete(self):
+        self.data['requirements']['title_policy'] = 'homefeed-v1'
+        self.save()
+        report = self.prepare(check=True)
+        self.assertEqual(report['episodes'][0]['error_codes'], ['TITLE_DECISION_MISSING'])
+        editorial_path = self.inputs / 'episode-01/editorial.json'
+        editorial = json.loads(editorial_path.read_text())
+        decision = {'schema': 'naver-title-decision/v1', 'policy': 'homefeed-v1',
+                    'selected': '제목', 'selection_reason': '조건의 차이를 제시',
+                    'fact_check': '본문과 근거 확인', 'pattern_evidence': '유입 데이터 미수집',
+                    'candidates': [{'title': '제목', 'pattern': '차이'},
+                                   {'title': '다른 제목', 'pattern': '상황'},
+                                   {'title': '세 번째', 'pattern': '반전'}]}
+        editorial['title_decision'] = decision
+        editorial_path.write_text(workflow.encoded(editorial))
+        self.assertEqual(self.prepare(check=True)['episodes'][0]['status'], 'review_pending')
+        decision['selected'] = '기존 제목'
+        editorial_path.write_text(workflow.encoded(editorial))
+        self.assertEqual(self.prepare(check=True)['episodes'][0]['error_codes'], ['TITLE_DECISION_STALE'])
+        decision['selected'] = '제목'
+        decision['candidates'].pop()
+        editorial_path.write_text(workflow.encoded(editorial))
+        self.assertEqual(self.prepare(check=True)['episodes'][0]['error_codes'], ['TITLE_DECISION_INCOMPLETE'])
+
+    def test_fixed_title_and_explicit_requested_count_are_respected(self):
+        base = {'schema': 'naver-title-decision/v1', 'policy': 'fixed-v1', 'selected': '고정 제목',
+                'selection_reason': '사용자 고정', 'fact_check': '본문과 대조',
+                'pattern_evidence': '고정 제목으로 비교 생략',
+                'candidates': [{'title': '고정 제목', 'pattern': '사용자 지정'}]}
+        workflow.validate_title_decision({'title_decision': base}, {'title_policy': 'fixed-v1'}, '고정 제목')
+        base['policy'] = 'homefeed-v1'; base['requested_count'] = 1
+        workflow.validate_title_decision({'title_decision': base}, {'title_policy': 'homefeed-v1'}, '고정 제목')
+
+    def test_proposed_title_can_be_compared_without_changing_explicit_fixed_title(self):
+        original = '발열조끼 구매 전, 배터리 호환과 세탁법부터 확인하세요'
+        selected = '발열조끼, 단자만 맞으면 될까? 배터리 연결 전 확인할 조건'
+        decision = {'schema': 'naver-title-decision/v1', 'policy': 'homefeed-v1',
+                    'selected': selected, 'selection_reason': '단자와 호환 조건의 차이',
+                    'fact_check': '본문의 제조사별 호환 조건과 대조',
+                    'pattern_evidence': '축적된 예상과 실제 패턴; 성과 집계 미수집',
+                    'candidates': [{'title': original, 'pattern': '제공된 원안'},
+                                   {'title': selected, 'pattern': '예상과 실제'},
+                                   {'title': '발열조끼 살 때 놓치기 쉬운 배터리와 세탁 조건', 'pattern': '구매 전 점검'}]}
+        workflow.validate_title_decision({'title_decision': decision}, {'title_policy': 'homefeed-v1'}, selected)
+        with self.assertRaises(workflow.BuildError) as raised:
+            workflow.validate_title_decision({'title_decision': decision}, {'title_policy': 'homefeed-v1'}, original)
+        self.assertEqual(raised.exception.code, 'TITLE_DECISION_STALE')
+        decision.update(policy='fixed-v1', selected=original,
+                        candidates=[{'title': original, 'pattern': '사용자 명시 고정'}])
+        workflow.validate_title_decision({'title_decision': decision}, {'title_policy': 'fixed-v1'}, original)
+
+    def test_homefeed_gate_survives_ready_snapshot_and_detects_stale_decision(self):
+        self.data['requirements']['title_policy'] = 'homefeed-v1'
+        self.save()
+        path = self.inputs / 'episode-01/editorial.json'
+        editorial = json.loads(path.read_text())
+        editorial['title_decision'] = {
+            'schema': 'naver-title-decision/v1', 'policy': 'homefeed-v1', 'selected': '제목',
+            'selection_reason': '독자의 조건 차이를 제시', 'fact_check': '본문과 원문 대조',
+            'pattern_evidence': '유입 성과 자료는 미수집',
+            'candidates': [{'title': '제목', 'pattern': '차이'},
+                           {'title': '다른 제목', 'pattern': '상황'},
+                           {'title': '세 번째 제목', 'pattern': '반전'}]}
+        path.write_text(workflow.encoded(editorial))
+        self.approve()
+        report = self.prepare(run='home-ready')
+        self.assertEqual(report['status'], 'ready')
+        directory = self.outputs / 'home-ready'
+        workflow.read_snapshot(directory)
+        frozen_editorial = directory / 'episode-01/editorial.json'
+        changed = json.loads(frozen_editorial.read_text())
+        changed['title_decision']['selected'] = '다른 제목'
+        frozen_editorial.write_text(workflow.encoded(changed))
+        self.rehash_snapshot(directory, 'episode-01/editorial.json', ready=True)
+        with self.assertRaises(workflow.BuildError) as raised:
+            workflow.read_snapshot(directory)
+        self.assertEqual(raised.exception.code, 'TITLE_DECISION_STALE')
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name).resolve()

@@ -69,6 +69,30 @@ v2 기본값:
 - v1 requirements는 빈 객체도 가능하다. `visual_mode`는 `required|optional|none`이며 생략 시 optional이다. `images_per_episode`를 지정하고 visual_mode를 생략하면 required로 해석한다. required는 1 이상의 수량이 필요하고, none은 이미지 0개만 허용한다. 이미지 개수를 생략한 optional은 수량을 고정하지 않되 모든 실제 이미지를 검사한다. tag_line_max_chars 기본100, 0~100으로 더 엄격하게 지정할 수 있다.
 - 태그 길이는 `#태그1 #태그2`의 #·공백을 포함한 Unicode code point 수다. UI의 제한이 더 엄격하면 UI 결과를 따른다. 100자는 이번 워크플로 정책이지 검색 최적화 공식이 아니다.
 
+## 신규 시리즈 제목 선정 게이트
+
+새 v2 manifest의 requirements에는 `title_policy`를 지정한다. 기본값으로 명시할 값은 `homefeed-v1`, 사용자가 제목을 명시적으로 고정하거나 최종 선택했으면 `fixed-v1`, 검색형 등 다른 유형을 지정했으면 `explicit-other-v1`이다. 홈판형 개선을 요청하면서 제시한 `제목:`·`추천 제목`은 비교할 원안이지 고정의 증거가 아니며 `homefeed-v1`로 후보와 함께 검토한다. 이 정책 판정은 요청을 읽는 작성자의 책임이며 validator가 자연어 의도를 자동 추론한다고 주장하지 않는다. 이미지·기존 초안 입력만 하는 경우 제목을 임의로 바꾸지 않는다. 호환을 위해 marker 없는 과거 v2도 열리지만 새 글은 생략하지 않는다. 선택 결과는 editorial의 별도 객체로 둔다.
+
+```json
+{
+  "title_decision": {
+    "schema": "naver-title-decision/v1",
+    "policy": "homefeed-v1",
+    "selected": "최종 제목",
+    "selection_reason": "해당 독자의 상황과 본문의 구체적인 보상",
+    "fact_check": "본문과 공식 근거에 있는 조건을 확인한 내용",
+    "pattern_evidence": "실제로 참고한 축적 사례 또는 유입 집계의 출처·시점, 없으면 미수집",
+    "candidates": [
+      {"title": "최종 제목", "pattern": "조건에 따른 차이"},
+      {"title": "다른 제목", "pattern": "독자의 상황과 결과"},
+      {"title": "또 다른 제목", "pattern": "오해와 실제 기준"}
+    ]
+  }
+}
+```
+
+기본 홈판형은 서로 다른 구조의 후보 3개 이상, 고정/다른 유형은 1개 이상이다. 사용자가 후보 개수를 지정한 경우에만 양의 정수 `requested_count`로 명시 수량을 반영한다. 선택 제목은 후보 중 하나이자 본문 H1과 정확히 같아야 한다. 제목 확정 뒤 이미지 계획을 만든다. 검사는 필드·수량·서로 다른 제목/구조 레이블·H1 일치만 확인한다. 실제 패턴 다양성·사실·사용자 요청·성과를 검증하거나 모델의 스킬 사용을 증명하지 않으므로 사람/에이전트의 별도 검수가 필요하다. 후보·기록 변경 시 기존 snapshot을 덮지 않고 새 run으로 준비한다.
+
 ## 본문·이미지 슬롯
 
 article은 공개할 H1·본문·태그 영역만 있는 Markdown 또는 drafter가 받는 구조형 JSON이다. Markdown 끝의 `**태그**` 레이블 아래에 해시태그를 둔다. 변환 시 태그 배열로 분리하며 본문에는 넣지 않는다. 관리용 코드·편집자 안내를 넣지 않는다.
