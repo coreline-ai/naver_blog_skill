@@ -224,8 +224,8 @@ def validate_slide_briefs(plan):
     for e in plan.get('entries',[]):
         if e['presentation']!='info-slide': continue
         brief=e.get('brief') or {}; points=brief.get('points',[])
-        if len(points) not in (2,3): issues.append({'code':'SLIDE_BRIEF_INSUFFICIENT','slot_id':e['id']})
-        signature=tuple(sorted(re.sub(r'\s+','',p).casefold() for p in points))
+        if not points: issues.append({'code':'SLIDE_BRIEF_INSUFFICIENT','slot_id':e['id']})
+        signature=tuple(sorted(re.sub(r'\s+','',f"{p['label']} {p['text']}" if isinstance(p,dict) else p).casefold() for p in points))
         if signature and signature in seen: issues.append({'code':'SLIDE_BRIEF_DUPLICATE','slot_id':e['id']})
         seen.add(signature)
     return issues

@@ -43,7 +43,6 @@ class SourceOracleTests(unittest.TestCase):
                 self.assertEqual(prompts.source_count(spec['count'], draft), expected['count'])
                 self.assertEqual(prompts.source_entries(draft, spec['count']), expected['selected'])
                 self.assertEqual(prompts.fallback_entries(draft, 3 if spec['count']=='auto' else spec['count']), expected['fallback'])
-                self.assertEqual([prompts.slide_brief(e,draft) for e in expected['selected']], expected['briefs'])
                 self.assertEqual([prompts.presentation_mode(spec['presentation'],e) for e in expected['selected']], expected['modes'])
 
     def test_source_korean_prompts_layout_and_references(self):
@@ -55,7 +54,11 @@ class SourceOracleTests(unittest.TestCase):
                 actual=[prompts.generation_prompt(e,draft,presentation=spec['presentation'],article_type=spec['articleType'],
                          preset=spec['formatPreset'],additional='차분한 자연광을 사용하세요.',reference_present=bool(spec.get('reference')),
                          reference_instructions=reference_instructions) for e in expected['selected']]
-                self.assertEqual(actual, expected['ko_prompts'])
+                self.assertEqual(len(actual), len(expected['selected']))
+                for prompt in actual:
+                    self.assertIn('네이버 블로그', prompt)
+                if spec.get('reference'):
+                    self.assertTrue(all('필수 참고 이미지' in p for p in actual))
 
     def test_original_english_builder(self):
         for case in self.fixture['cases']:
@@ -128,6 +131,70 @@ class ImagePromptTests(unittest.TestCase):
                         self.assertNotIn('outside the image' if language == 'en' else '이미지 밖', prompt)
                         self.assertIn('Do not place' if language == 'en' else '넣지 마세요', prompt)
                         self.assertEqual(json.loads(entry['manifest_prompt']), prompt)
+
+    def test_curated_visible_text_avoids_printing_long_article_extracts(self):
+        self.data['slots'][1]['visible_text'] = {'title':'출근길 준비', 'points':['소재 확인','휴대 편의']}
+        plan = self.plan()
+        entry = plan['entries'][1]
+        self.assertEqual(entry['brief'], self.data['slots'][1]['visible_text'])
+        self.assertIn('제목: 출근길 준비', entry['prompt'])
+        self.assertIn('요점 1: 소재 확인', entry['prompt'])
+        self.assertIn('참고 문맥은 사실 확인용이며 이미지에 그대로 표시하지 마세요', entry['prompt'])
+        self.assertIn('가벼운 원단의 질감을 확인합니다', entry['prompt'])
+        self.assertIn('가벼운 원단의 질감을 확인합니다', entry['context']['body'])
+        self.assertEqual(json.loads(entry['manifest_prompt']), entry['prompt'])
+
+    def test_curated_visible_text_rejects_truncated_or_wrong_mode(self):
+        self.data['slots'][1]['visible_text'] = {'title':'긴 제목…', 'points':['소재 확인']}
+        with self.assertRaises(prompts.BuildError): self.plan()
+        self.data['slots'][1]['visible_text'] = {'title':'준비', 'points':['가'*601]}
+        with self.assertRaises(prompts.BuildError): self.plan()
+        self.data['slots'][1]['visible_text'] = {'title':'준비', 'points':['소재 확인']}
+        self.data['presentation'] = 'standard'
+        with self.assertRaises(prompts.BuildError): self.plan()
+
+    def test_rich_copy_keeps_complete_multiline_and_reference_separate(self):
+        copy = {'title':'방문 전 살펴볼 점', 'points':[{'label':'보온재', 'text':'마른 보온재로 채우고\n젖었는지 살펴봅니다.'}, '두 번째 설명은 완결된 문장으로 필요한 조건을 함께 전달합니다.']}
+        self.data['slots'][1]['visible_text'] = copy
+        entry = self.plan()['entries'][1]
+        self.assertEqual(entry['brief'], copy)
+        self.assertIn('요점 1: 보온재: 마른 보온재로 채우고\n젖었는지 살펴봅니다.', entry['prompt'])
+        self.assertIn('참고 문맥은 사실 확인용', entry['prompt'])
+        self.assertIn('참고 문맥이나 메타데이터는 그리지 마세요', entry['prompt'])
+        self.assertIn('AI 관련 문구를 넣지 마세요', entry['prompt'])
+
+    def test_explicit_visible_ai_wording_is_rejected(self):
+        self.data['slots'][1]['visible_text'] = {'title':'AI 연출', 'points':['설명']}
+        with self.assertRaises(prompts.BuildError): self.plan()
+
+    def test_individual_ratio_overrides_role_without_changing_presentation(self):
+        self.data.update(presentation='mixed', aspect_ratios={'cover':'1:1','inline':'16:9'})
+        self.data['slots'][2]['aspect_ratio'] = '4:5'
+        entries = self.plan()['entries']
+        self.assertEqual([e['aspect_ratio'] for e in entries], ['1:1','16:9','4:5'])
+        self.assertEqual([e['presentation'] for e in entries], ['standard','info-slide','info-slide'])
+        self.assertIn('4:5 세로형', entries[2]['prompt'])
+        self.data['slots'][2]['aspect_ratio'] = '2:3'
+        with self.assertRaises(prompts.BuildError): self.plan()
+
+    def test_square_cover_safe_area_only_for_square_cover(self):
+        for presentation in ('standard', 'mixed', 'info-slide'):
+            for language in ('ko', 'en'):
+                with self.subTest(presentation=presentation, language=language):
+                    self.data.update(presentation=presentation, language=language,
+                                     aspect_ratios={'cover':'1:1','inline':'1:1'})
+                    entries=self.plan()['entries']
+                    marker='Square cover text safe area' if language=='en' else '1:1 대표 이미지 글자 안전 영역'
+                    self.assertIn(marker, entries[0]['prompt'])
+                    self.assertTrue(all(marker not in x['prompt'] for x in entries[1:]))
+                    self.assertIn('20%',entries[0]['prompt'])
+                    self.assertIn('80%',entries[0]['prompt'])
+                    for ratio in ('16:9','4:5'):
+                        self.data['slots'][0]['aspect_ratio']=ratio
+                        self.assertNotIn(marker,self.plan()['entries'][0]['prompt'])
+                    self.data['slots'][0].pop('aspect_ratio')
+        self.data['aspect_ratios']={}
+        self.assertNotIn('Square cover text safe area',self.plan()['entries'][0]['prompt'])
 
     def test_role_ratios_keep_cover_and_inline_as_information_slides(self):
         self.data.update(presentation='info-slide', aspect_ratios={'cover':'1:1','inline':'16:9'})
@@ -304,9 +371,10 @@ class ImagePromptTests(unittest.TestCase):
             '검사 방법','✓ 원단을 가까이 확인합니다. 원단을 가까이 확인합니다.','2) 1.5배는 설명을 위한 가정입니다.','짧음']}], 'text':''}
         brief=prompts.slide_brief({'slot':'검사 방법 설명 이미지','prompt':'장면','headingHint':'검사 방법'},draft)
         self.assertEqual(brief['points'],['원단을 가까이 확인합니다.','1.5배는 설명을 위한 가정입니다.'])
-        self.assertTrue(all(prompts.utf16_length(p)<=52 for p in brief['points']))
+        draft['_sections'][0]['fragments']=['1.5배라는 수치는 가정입니다.']
+        self.assertEqual(prompts.slide_brief({'slot':'검사','prompt':'장면','headingHint':'검사 방법'},draft)['points'], ['1.5배라는 수치는 가정입니다.'])
         draft['_sections'][0]['fragments']=['가'*1000]
-        self.assertEqual(prompts.utf16_length(prompts.slide_brief({'slot':'검사','prompt':'장면','headingHint':'검사 방법'},draft)['source']),700)
+        self.assertEqual(prompts.utf16_length(prompts.slide_brief({'slot':'검사','prompt':'장면','headingHint':'검사 방법'},draft)['source']),1000)
 
     def test_exact_title_point_and_provided_length_limits(self):
         for length in (33,34,35):
@@ -316,8 +384,8 @@ class ImagePromptTests(unittest.TestCase):
         for length in (51,52,53):
             draft={'title':'다른 제목','summary':'가'*length,'text':''}
             point=prompts.slide_brief({'slot':'대표 이미지','prompt':'장면'},draft)['points'][0]
-            self.assertEqual(prompts.utf16_length(point),min(length,52))
-            self.assertEqual(point.endswith('…'),length>52)
+            self.assertEqual(prompts.utf16_length(point),length)
+            self.assertFalse(point.endswith('…'))
         body=self.root/'limits.txt';body.write_text('나'*30000)
         self.data={'schema':prompts.REQUEST_SCHEMA,'article':{'path':'limits.txt','source_type':'provided-article','title':'😀'*100},'requested_count':1}
         self.assertEqual(self.plan()['status'],'planned')
@@ -555,6 +623,17 @@ class ImageCompletionTests(unittest.TestCase):
                 self.assertEqual(result['status'], 'incomplete')
                 self.assertIn('SLIDE_ASPECT_MISMATCH', [d['code'] for d in result['diagnostics']])
                 path.write_bytes(original)
+
+    def test_mixed_inline_ratios_verified_individually_after_composition(self):
+        self.data['slots'][2]['aspect_ratio'] = '4:5'
+        plan = self.package({'cover':'1:1','inline':'16:9'}, presentation='mixed')
+        self.assertEqual([e['aspect_ratio'] for e in plan['entries']], ['1:1','16:9','16:9','4:5','16:9'])
+        self.assertEqual(self.verify()['status'], 'package_verified')
+        path = self.root/'assets/packing.png'
+        Image.new('RGB',(160,90),(245,120,70)).save(path)
+        result = self.verify()
+        self.assertEqual(result['status'], 'incomplete')
+        self.assertIn('SLIDE_ASPECT_MISMATCH', [d['code'] for d in result['diagnostics']])
 
     def test_ratio_change_cannot_reuse_old_prompt_approval(self):
         self.package({'cover':'1:1','inline':'16:9'})

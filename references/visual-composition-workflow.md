@@ -102,6 +102,10 @@ Use the [shared prompt helper contract](blog-image-prompt-contract.md) when sele
 
 Keep `presentation` separate from the existing generation `mode`: `standard` keeps the chosen scene/medium, explicit `info-slide` uses article-grounded information-slide wording and `infographic-diagram`, and `mixed` uses a standard cover plus information slides inline. Do not impose slides on every topic. Korean is the default prompt language; the conditional English builder does not impose Korean slide copy. User-selected presentation and contextual scene direction work together.
 
+For information slides, use the [shared prompt contract](blog-image-prompt-contract.md) to prepare a reviewed title and substantive, complete explanations per slot, with conditions, comparisons or cautions when useful. Do not replace explanations with bare keywords solely to avoid rendering errors. Give the generator reference context separately from the exact visible copy; never print raw context or metadata. Do not truncate text or use ellipses: edit it without changing meaning, wrap it legibly, or split it across images. Select each slot's ratio independently when requested; role defaults apply only when the slot has no override. Choose the visual treatment to suit the article, not a fixed template.
+
+For 1:1 cover images only, divide height into five equal horizontal bands and place all visible text fully within bands 2–4 (20%–80% from the top); keep the top and bottom fifth text-free. The text may sit slightly above center within this band. If the cover ratio is not known until generation, inspect the actual image and apply the rule when it is square. This is the user's layout preference, not a guarantee that a Naver link card will show every letter; confirm the actual card when possible. Do not impose this rule on 16:9 or 4:5 covers or on inline images.
+
 ```bash
 python3.11 -B scripts/build_blog_image_prompts.py \
   --input drafts/image-request.json --project-root "$PWD" --check
@@ -124,7 +128,7 @@ Each prompt should state:
 
 Do not add invented people, events, products, or claims that the article does not imply.
 
-Do not put “AI 연출” (including spacing variants) inside generated or edited images, including on covers and information slides. Check slot prompts and supplemental instructions for conflicting requests before calling the image tool. Do not automatically add AI-generation disclosures in captions or adjacent text; the user handles those. Do not present generated scenes as evidence of actual experiences or real events.
+Do not put any AI-related wording, including “AI 연출” (and spacing variants), inside generated or edited images, including covers and information slides. Check visible copy, slot prompts and supplemental instructions for conflicts before generation. Do not automatically add AI-generation disclosures in captions or adjacent text; the user handles those. Do not present generated scenes as evidence of actual experiences or real events.
 
 ## 7. Generate and persist files
 
@@ -150,7 +154,11 @@ Review each asset against these categories:
 | `context` | The image supports the nearby section | Generic finance image under a timing explanation |
 | `factuality` | Times, objects, and relationships do not contradict the article | Wrong clock time or impossible process |
 | `anatomy` | Faces, hands, posture, and devices look plausible | Extra fingers or fused objects |
-| `text` | Required text is exact; otherwise no legible invented text; no “AI 연출” inside the image | Broken Korean, fake labels, or “AI 연출” embedded in the image |
+| `text` | Complete Korean text is readable and accurate, with no missing/extra characters, ellipses, fabricated labels or AI-related wording | Broken, cut off, misspelled or invented text |
+| `numbers` | Every visible digit, sign, decimal, unit, date, percentage and diagram relationship matches checked copy and source; inspect labels on devices and backgrounds too | Invented device reading, lost decimal, swapped units or misleading chart |
+| `information` | Each slide answers its reader question with substantive verified explanation, conditions or cautions where useful; compare against the adjacent manuscript | Bare labels that merely repeat the heading, omitted qualifying conditions, or unrelated text |
+| `safety` | Depicted actions, sequences and objects are safe and supported by the relevant source/product instructions | Unsafe placement, submerged electrical base, misleading protective equipment or fabricated steps |
+| `ratio` | Actual image dimensions match the requested slot ratio, allowing integer-pixel rounding; mobile rendering remains readable | Wrong aspect ratio, clipped content or text too small |
 | `brand` | No unauthorized logo or fabricated official UI | Fake brokerage or government interface |
 | `style` | The selected media serve the topic and remain coherent with the article's brief; intentional photo/diagram mixes are allowed | Copying the previous topic's look or changing medium without an explanatory reason |
 | `purposeful_variety` | Each slot adds distinct information; the multi-article set reflects different contexts or a deliberate series identity | Same desk, cards, camera angle, or comparison panels with only labels/backgrounds changed |
@@ -165,7 +173,7 @@ For UI instructions, official forms, branded products, or evidence images, use a
 ## 9. Write alt text and captions
 
 - Alt text should describe the information or situation a reader would miss, not start with “이미지” or repeat the filename.
-- Captions should explain why the image matters to the adjacent paragraph.
+- Use a caption only when requested or genuinely necessary; do not add image explanations to the body when the user has asked not to.
 - Keep factual details in the article body even when they also appear visually.
 - Do not automatically add an AI-generation disclosure to captions or adjacent text; the user handles it.
 - The composer binds each non-empty caption to the paragraph immediately following its image. Only that block id is excluded from v2 body length; identical wording elsewhere remains body text.

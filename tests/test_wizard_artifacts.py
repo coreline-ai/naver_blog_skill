@@ -27,7 +27,7 @@ class WizardArtifactTests(unittest.TestCase):
         self.assertEqual(source.read_bytes(),original)
     def answer(self,s,v): return w.apply_answer(s,w.next_step(s)['question_id'],v,s['revision'])
     def record(self,s,kind,p): return w.record_event(s,{'type':kind,'payload':p},s['revision'])
-    def plan(self,n=1,presentation='standard',action='use-files',aspect_ratios=None):
+    def plan(self,n=1,presentation='standard',action='use-files',aspect_ratios=None,slot_options=None):
         s=w.new_session(self.work,{'task_mode':'images-only','source_article':'source.md','image_action':action,
             'presentation':presentation,'requested_count':n,'additional_requirements':'none','reference_use':'no',
             **({'aspect_ratios':aspect_ratios} if aspect_ratios is not None else {})})
@@ -41,6 +41,7 @@ class WizardArtifactTests(unittest.TestCase):
                 'purpose':f'관리 설명 {i}','prompt':f'실내 화분의 관리 과정 {i}',
                 'mode':'photorealistic-natural','heading_hint':'' if i==0 else f'관리 단계 {i}',
                 'placement':'H1 아래' if i==0 else f'관리 단계 {i} 뒤','alt':f'식물 관리 {i}'} for i in range(n)]
+        for index, options in (slot_options or {}).items(): slots[index].update(options)
         marked=text.replace('# 식물 관리\n','# 식물 관리\n<!-- naver-image:cover -->\n',1)
         for i in range(1,n):
             paragraph=details[i-1]+'\n'
@@ -92,6 +93,20 @@ class WizardArtifactTests(unittest.TestCase):
         s=self.qa(self.image(s))
         with self.assertRaises(BuildError): a.bind_asset(s,'section-1',bad,'user-file')
 
+    def test_per_slot_ratio_and_rich_copy_survive_wizard_plan(self):
+        s=self.plan(3,'mixed',aspect_ratios={'cover':'1:1','inline':'16:9'},slot_options={
+            2:{'aspect_ratio':'4:5','visible_text':{'title':'물 관리','points':[{'label':'확인','text':'흙의 상태를 먼저 살펴요.'}]}}})
+        entries=a.plan_entries(s)
+        self.assertEqual([e['aspect_ratio'] for e in entries],['1:1','16:9','4:5'])
+        self.assertIn('흙의 상태를 먼저 살펴요.',entries[2]['prompt'])
+        s=self.qa(self.image(s));s=self.qa(self.image(s))
+        bad=a.version_path(a.run_root(s),'wrong-ratio','.png')
+        Image.new('RGB',(160,90),'orange').save(bad)
+        with self.assertRaises(BuildError) as exc: a.bind_asset(s,'section-2',bad,'user-file')
+        self.assertEqual(exc.exception.code,'SLIDE_ASPECT_MISMATCH')
+        s=self.qa(self.image(s))
+        self.assertEqual(w.next_step(s)['kind'],'question')
+
     def test_ratio_change_preserves_article_and_files_but_invalidates_completed_package(self):
         s=self.ready(3,'info-slide',{'cover':'1:1','inline':'16:9'})
         payload=a.compose_and_verify(s,a.run_root(s)); s=self.record(s,'package',payload)
@@ -140,7 +155,7 @@ class WizardArtifactTests(unittest.TestCase):
         slots=copy.deepcopy(s['slot_selection']['slots']); slots[0]['id']='other'
         with self.assertRaises(BuildError): a.validate_slot_article(s['article']['path'],s['slot_selection']['path'],slots,root)
     def test_A04_slide_brief_shortage_and_duplicate_block(self):
-        plan={'entries':[{'id':'a','presentation':'info-slide','brief':{'points':['한 문장']}}]}
+        plan={'entries':[{'id':'a','presentation':'info-slide','brief':{'points':[]}}]}
         self.assertEqual(a.validate_slide_briefs(plan)[0]['code'],'SLIDE_BRIEF_INSUFFICIENT')
         plan['entries'][0]['brief']['points']=['첫 요점입니다.','두 번째 요점입니다.']
         plan['entries'].append({**plan['entries'][0],'id':'b'})
