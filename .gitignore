@@ -9,3 +9,6 @@ __pycache__/
 outputs/creator-advisor-private/
 /.seasonal-writer/
 /articles/
+
+# 로컬 전용 계정·크리에이터샵 설정
+/AGENTS.local.md

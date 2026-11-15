@@ -94,8 +94,9 @@ runpy.run_path(script,run_name='__main__')
             self.assertNotIn(p.name, {"history.json", "article.md", "receipt.json", "source_data.json"})
             self.assertNotEqual(p.suffix, ".xlsx")
             text = p.read_text()
-            for absolute in (str(ROOT), "$HOME", "$EXTERNAL_VOLUME"):
-                self.assertNotIn(absolute, text, str(p))
+            self.assertNotIn(str(ROOT), text, str(p))
+            self.assertNotRegex(text, r"/Users/[^/\s]+", str(p))
+            self.assertNotRegex(text, r"/Volumes/[^/\s]+", str(p))
         for needed in ("SKILL.md", "agents/openai.yaml", "data/keywords.jsonl", "data/topics.jsonl", "data/source-manifest.json", "scripts/catalog.py", "scripts/history.py", "scripts/article.py"):
             self.assertTrue((SKILL/needed).is_file())
 
