@@ -824,5 +824,17 @@ class ImageCompletionTests(unittest.TestCase):
         self.assertEqual(self.cli('--check','--operation','generate-and-compose','--manifest',str(self.manifest),'--composed-article',str(self.composed)).returncode,1)
 
 
+class SharedReferenceConsistencyTests(unittest.TestCase):
+    def test_slide_guidance_does_not_restore_obsolete_character_caps(self):
+        files = [ROOT/'references/image-generation-modes.md',
+                 ROOT/'skills/naver-blog-wizard/references/question-flow.md']
+        for path in files:
+            with self.subTest(path=path.name):
+                text = path.read_text(encoding='utf-8')
+                self.assertNotIn('34 UTF-16', text)
+                self.assertNotIn('34/요점 52', text)
+                self.assertIn('blog-image-prompt-contract.md', text)
+
+
 if __name__=='__main__':
     unittest.main()
